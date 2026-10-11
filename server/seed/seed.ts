@@ -194,6 +194,10 @@ export async function seedDemoWorkspace(app: NavoroApp, options: { demoPort: num
   if (sediDraft) {
     t.privacy.save(sediId, {
       ...sediDraft.policy,
+      // Sedi's headings can contain the user's own names (Timely planning containers), so they are
+      // neither observed nor sent. Card lists are additionally marked data-navoro-sensitive in Sedi.
+      observe: ['route', 'pageTitle', 'elements', 'visibleErrors'],
+      transmit: ['route', 'pageTitle', 'elements', 'visibleErrors'],
       neverCollect: [
         { id: newId('rule'), kind: 'navoro_id', value: 'note.body', label: 'Note editor — personal notes', createdAt: now() },
         { id: newId('rule'), kind: 'navoro_id', value: 'assistant.input', label: 'Assistant message box', createdAt: now() },

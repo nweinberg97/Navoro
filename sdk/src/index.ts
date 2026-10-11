@@ -11,7 +11,7 @@
  * or steals focus from host elements (see controller.ts).
  */
 import type { EnvironmentName, SanitizedContext } from '../../packages/contracts/src/sdk-types.ts';
-import { NavoroController, type StateListener } from './controller.ts';
+import { NavoroController, type PanelListener, type StateListener } from './controller.ts';
 import type { SessionState } from './state-machine.ts';
 import { collectContext } from './context-collector.ts';
 import { resolveTarget } from './resolver.ts';
@@ -25,9 +25,17 @@ export interface NavoroInitOptions {
   apiOrigin: string;
   /** Enables getLastPayload() outside development. */
   debug?: boolean;
+  /** 'hidden' lets the host render its own trigger and call Navoro.open()/close(). */
+  launcher?: 'default' | 'hidden';
+  /** Where the assistance panel is anchored. Defaults to the workspace's launcher position. */
+  panelPosition?: PanelPosition;
+  /** Distance in px from the anchored edges (e.g. your header height). */
+  panelOffset?: number;
 }
 
-export type NavoroEventName = 'state';
+export type PanelPosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+
+export type NavoroEventName = 'state' | 'panel';
 
 /** Public API exposed as `window.Navoro`. */
 export interface NavoroApi {
@@ -35,13 +43,17 @@ export interface NavoroApi {
   init(options: NavoroInitOptions): Promise<void>;
   open(): void;
   close(): void;
+  /** Whether the assistance panel is currently open. */
+  isOpen(): boolean;
   ask(question: string): Promise<void>;
   /** Removes every listener, observer, overlay and DOM node created by Navoro. */
   destroy(): void;
   /** Development/debug only: the last sanitized context payload sent. */
   getLastPayload(): SanitizedContext | null;
   /** Subscribe to session state changes. Returns an unsubscribe function. */
-  on(event: NavoroEventName, callback: (state: SessionState) => void): () => void;
+  on(event: 'state', callback: (state: SessionState) => void): () => void;
+  /** Fires with `true`/`false` whenever the assistance panel opens or closes. */
+  on(event: 'panel', callback: (open: boolean) => void): () => void;
 }
 
 const VERSION = typeof __NAVORO_SDK_VERSION__ === 'string' ? __NAVORO_SDK_VERSION__ : '0.0.0-dev';
@@ -51,6 +63,7 @@ let initPromise: Promise<void> | null = null;
 let initKey = '';
 /** Survives re-init: every controller emits into this one set. */
 const listeners = new Set<StateListener>();
+const panelListeners = new Set<PanelListener>();
 
 function teardown(): void {
   controller?.destroy();
@@ -70,7 +83,16 @@ function validateOptions(o: NavoroInitOptions): NavoroInitOptions {
   if (!o?.publicKey?.trim?.() || (o.environment !== 'development' && o.environment !== 'production') || !apiOrigin) {
     throw new TypeError('Navoro.init: expected { publicKey, environment: "development" | "production", apiOrigin: http(s) URL }');
   }
-  return { publicKey: o.publicKey.trim(), environment: o.environment, apiOrigin, debug: o.debug === true };
+  const offset = typeof o.panelOffset === 'number' && Number.isFinite(o.panelOffset) && o.panelOffset > 0 ? Math.min(400, Math.round(o.panelOffset)) : undefined;
+  return {
+    publicKey: o.publicKey.trim(),
+    environment: o.environment,
+    apiOrigin,
+    debug: o.debug === true,
+    launcher: o.launcher === 'hidden' ? 'hidden' : 'default',
+    ...(isPanelPosition(o.panelPosition ?? null) ? { panelPosition: o.panelPosition } : {}),
+    ...(offset !== undefined ? { panelOffset: offset } : {}),
+  };
 }
 
 export const Navoro: NavoroApi = {
@@ -83,12 +105,16 @@ export const Navoro: NavoroApi = {
     } catch (err) {
       return Promise.reject(err);
     }
-    const key = `${opts.publicKey}|${opts.environment}|${opts.apiOrigin}|${opts.debug}`;
+    const key = `${opts.publicKey}|${opts.environment}|${opts.apiOrigin}|${opts.debug}|${opts.launcher}|${opts.panelPosition ?? ''}|${opts.panelOffset ?? ''}`;
     // Double init with identical options is a no-op; different options re-init cleanly.
     if (initPromise && key === initKey) return initPromise;
     teardown();
     initKey = key;
-    const ctl = new NavoroController({ ...opts, debug: opts.debug === true, sdkVersion: VERSION }, listeners);
+    const ctl = new NavoroController(
+      { ...opts, debug: opts.debug === true, launcher: opts.launcher ?? 'default', panelPosition: opts.panelPosition ?? null, panelOffset: opts.panelOffset ?? null, sdkVersion: VERSION },
+      listeners,
+      panelListeners,
+    );
     controller = ctl;
     initPromise = ctl.start().catch((err: unknown) => {
       if (controller === ctl) teardown();
@@ -105,6 +131,10 @@ export const Navoro: NavoroApi = {
     controller?.close();
   },
 
+  isOpen() {
+    return controller?.isOpen ?? false;
+  },
+
   ask(question) {
     return controller ? controller.ask(String(question ?? '')) : Promise.resolve();
   },
@@ -117,12 +147,25 @@ export const Navoro: NavoroApi = {
     return controller?.getLastPayload() ?? null;
   },
 
-  on(event, callback) {
-    if (event !== 'state' || typeof callback !== 'function') return () => undefined;
-    listeners.add(callback);
-    return () => void listeners.delete(callback);
+  on(event: NavoroEventName, callback: ((state: SessionState) => void) | ((open: boolean) => void)) {
+    if (typeof callback !== 'function') return () => undefined;
+    if (event === 'state') {
+      const cb = callback as StateListener;
+      listeners.add(cb);
+      return () => void listeners.delete(cb);
+    }
+    if (event === 'panel') {
+      const cb = callback as PanelListener;
+      panelListeners.add(cb);
+      return () => void panelListeners.delete(cb);
+    }
+    return () => undefined;
   },
 };
+
+function isPanelPosition(value: string | null): value is PanelPosition {
+  return value === 'bottom-right' || value === 'bottom-left' || value === 'top-right' || value === 'top-left';
+}
 
 /** Reads install attributes from the SDK's own <script> tag. */
 export function readScriptConfig(script: HTMLScriptElement | null): NavoroInitOptions | null {
@@ -136,7 +179,17 @@ export function readScriptConfig(script: HTMLScriptElement | null): NavoroInitOp
   } catch {
     return null;
   }
-  return { publicKey: key, environment: env, apiOrigin, debug: script.getAttribute('data-navoro-debug') === 'true' };
+  const panelAttr = script.getAttribute('data-navoro-panel');
+  const offsetAttr = Number(script.getAttribute('data-navoro-panel-offset'));
+  return {
+    publicKey: key,
+    environment: env,
+    apiOrigin,
+    debug: script.getAttribute('data-navoro-debug') === 'true',
+    launcher: script.getAttribute('data-navoro-launcher') === 'hidden' ? 'hidden' : 'default',
+    ...(isPanelPosition(panelAttr) ? { panelPosition: panelAttr } : {}),
+    ...(Number.isFinite(offsetAttr) && offsetAttr > 0 ? { panelOffset: offsetAttr } : {}),
+  };
 }
 
 function autoInit(script: HTMLScriptElement | null): void {

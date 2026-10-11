@@ -390,6 +390,37 @@ test('Escape stops an in-flight request; stale results are ignored', async () =>
   await page.context().close();
 });
 
+test('host launcher mode: no floating launcher, top-anchored panel, panel events, focus returns to the host trigger', async () => {
+  const { page } = await openPage({ scriptAttrs: 'data-navoro-key="nav_pk_test" data-navoro-launcher="hidden" data-navoro-panel="top-right" data-navoro-panel-offset="64"' });
+  await page.waitForFunction(() => document.querySelector('navoro-root')?.shadowRoot?.querySelector('[data-navoro-panel]'));
+  assert.equal(await page.evaluate(() => document.querySelector('navoro-root')!.shadowRoot!.querySelector('[data-navoro-launcher]')), null, 'no floating launcher');
+  await page.evaluate(() => {
+    const trigger = document.createElement('button');
+    trigger.id = 'host-help';
+    trigger.textContent = 'Help';
+    trigger.addEventListener('click', () => ((window as any).Navoro.isOpen() ? (window as any).Navoro.close() : (window as any).Navoro.open()));
+    document.body.prepend(trigger);
+    (window as any).__panelEvents = [];
+    (window as any).Navoro.on('panel', (open: boolean) => (window as any).__panelEvents.push(open));
+  });
+  await page.locator('#host-help').focus();
+  await page.locator('#host-help').click();
+  const geometry = await page.evaluate(() => {
+    const panel = document.querySelector('navoro-root')!.shadowRoot!.querySelector('[data-navoro-panel]') as HTMLElement;
+    const r = panel.getBoundingClientRect();
+    // Computed `top` (not the box) so the entrance animation's transform doesn't skew the reading.
+    return { top: parseFloat(getComputedStyle(panel).top), rightGap: innerWidth - r.right, open: (window as any).Navoro.isOpen() };
+  });
+  assert.equal(geometry.open, true);
+  assert.equal(Math.round(geometry.top), 64, 'panel sits under the host header');
+  assert.ok(geometry.rightGap >= 0 && geometry.rightGap <= 24, 'panel is anchored right');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !(window as any).Navoro.isOpen());
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'host-help', 'focus returns to the host trigger');
+  assert.deepEqual(await page.evaluate(() => (window as any).__panelEvents), [true, false]);
+  await page.context().close();
+});
+
 test('403 origin-not-allowed renders nothing and warns once', async () => {
   const { page, warnings } = await openPage({ scriptAttrs: 'data-navoro-key="nav_pk_test"', initStatus: 403 });
   await page.waitForTimeout(300);

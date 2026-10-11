@@ -133,6 +133,8 @@ Last full run in this repository: **134 unit, 107 integration, 10 end-to-end —
 
 Register your app's origin in **Applications**, add `data-navoro-id` attributes to controls you want Navoro to point at, approve them under *Approved application metadata* (the SDK discovers them automatically in development), and publish a configuration. The SDK validates the origin on init, loads only the published public configuration, and collects only allowlisted context. `window.Navoro` also exposes `init`, `open`, `close`, `ask`, `destroy`, `on('state')` and (development only) `getLastPayload()`.
 
+**Use your own Help button** instead of the floating launcher: add `data-navoro-launcher="hidden" data-navoro-panel="top-right" data-navoro-panel-offset="64"` (offset = your header height + a gap), then call `Navoro.open()` / `Navoro.close()` / `Navoro.isOpen()` from your button and keep its `aria-expanded` in sync with `Navoro.on('panel', open => …)`. Focus returns to your button when the panel closes. Sedi does exactly this (`js/navoro.js`).
+
 Recommended host CSP: `script-src 'self' https://YOUR-NAVORO-ORIGIN; connect-src 'self' https://YOUR-NAVORO-ORIGIN`. Navoro uses constructable stylesheets inside a shadow root, so no `'unsafe-inline'` is needed.
 
 ## Limitations and what is not claimed

@@ -21,14 +21,19 @@ export interface NavoroRoot {
 }
 
 /** Creates the single host element (appended to <body>) with an open shadow root. */
-export function createRoot(position: 'bottom-right' | 'bottom-left'): NavoroRoot {
+export function createRoot(position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left', offset: number | null = null): NavoroRoot {
   const host = document.createElement('navoro-root');
   host.setAttribute(HOST_ATTR, '');
   host.setAttribute('data-navoro-ignore', '');
   // `all: initial` isolates from inherited host styles; huge z-index keeps us on top.
   host.style.cssText = 'all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483646;';
   const shadow = host.attachShadow({ mode: 'open' });
-  const container = h('div', { class: position === 'bottom-left' ? 'root left' : 'root' });
+  const classes = ['root'];
+  if (position.endsWith('left')) classes.push('left');
+  if (position.startsWith('top')) classes.push('top');
+  const container = h('div', { class: classes.join(' ') });
+  // Host apps pass their header height so the panel sits just under it.
+  if (offset) container.style.setProperty('--edge', `${offset}px`);
   // Constructable stylesheets are not subject to the host page's style-src CSP, so Navoro
   // works on hosts that forbid inline styles. Fall back to a <style> element elsewhere.
   let adopted = false;

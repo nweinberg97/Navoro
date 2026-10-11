@@ -31,9 +31,14 @@ export interface ControllerOptions {
   apiOrigin: string;
   debug: boolean;
   sdkVersion: string;
+  /** 'hidden': the host renders its own trigger. */
+  launcher: 'default' | 'hidden';
+  panelPosition: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | null;
+  panelOffset: number | null;
 }
 
 export type StateListener = (state: SessionState) => void;
+export type PanelListener = (open: boolean) => void;
 
 function newRequestId(): string {
   try {
@@ -72,10 +77,13 @@ export class NavoroController {
   readonly #onKeyDown = (ev: KeyboardEvent) => this.#handleKey(ev);
   readonly #onPageHide = () => this.#events?.flush(true);
 
-  /** `listeners` is owned by the caller (index.ts) so subscriptions survive re-init. */
-  constructor(options: ControllerOptions, listeners: ReadonlySet<StateListener>) {
+  readonly #panelListeners: ReadonlySet<PanelListener>;
+
+  /** Listener sets are owned by the caller (index.ts) so subscriptions survive re-init. */
+  constructor(options: ControllerOptions, listeners: ReadonlySet<StateListener>, panelListeners: ReadonlySet<PanelListener> = new Set()) {
     this.options = options;
     this.#stateListeners = listeners;
+    this.#panelListeners = panelListeners;
     this.#api = new NavoroApi(options);
   }
 
@@ -101,11 +109,15 @@ export class NavoroController {
     this.#mount(config);
   }
 
+  get isOpen(): boolean {
+    return this.#panel?.isOpen ?? false;
+  }
+
   #mount(config: PublicSdkConfig): void {
-    const root = createRoot(config.launcher.position);
+    const root = createRoot(this.options.panelPosition ?? config.launcher.position, this.options.panelOffset);
     this.#root = root;
     this.#overlay = new Overlay(root);
-    this.#panel = new Panel(root, config, {
+    this.#panel = new Panel(root, config, this.options.launcher === 'hidden', {
       onOpen: () => this.open(),
       onClose: () => this.close(),
       onAsk: (q) => void this.ask(q),
@@ -113,6 +125,7 @@ export class NavoroController {
       onRetry: () => this.#retry(),
       onStartWalkthrough: () => this.#startWalkthrough(),
       onFeedback: (helpful) => this.#feedback(helpful),
+      onToggle: (open) => this.#emitPanel(open),
     });
     this.#m.subscribe((state, event) => this.#onState(state, event));
     root.shadow.addEventListener('keydown', this.#onKeyDown as EventListener);
@@ -272,6 +285,16 @@ export class NavoroController {
   #startWalkthrough(): void {
     // From the answer view or the completion view (restart); both start at step 0.
     if (this.#m.state.stepIndex === null) this.#m.send({ type: 'NEXT_STEP' });
+  }
+
+  #emitPanel(open: boolean): void {
+    for (const listener of [...this.#panelListeners]) {
+      try {
+        listener(open);
+      } catch (err) {
+        console.error('[Navoro] panel listener failed', err);
+      }
+    }
   }
 
   #feedback(helpful: boolean): void {

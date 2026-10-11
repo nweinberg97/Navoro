@@ -21,6 +21,8 @@ export interface PanelCallbacks {
   onRetry(): void;
   onStartWalkthrough(): void;
   onFeedback(helpful: boolean): void;
+  /** Fired whenever the panel opens or closes, by any path. */
+  onToggle?(open: boolean): void;
 }
 
 export interface PanelExtras {
@@ -48,9 +50,14 @@ export class Panel {
   #open = false;
   #lastAnnounced = '';
 
-  constructor(root: NavoroRoot, config: PublicSdkConfig, cb: PanelCallbacks) {
+  readonly #hiddenLauncher: boolean;
+  /** Host element that opened the panel (hidden-launcher mode) so focus can return to it. */
+  #opener: HTMLElement | null = null;
+
+  constructor(root: NavoroRoot, config: PublicSdkConfig, hiddenLauncher: boolean, cb: PanelCallbacks) {
     this.#cb = cb;
     this.#config = config;
+    this.#hiddenLauncher = hiddenLauncher;
     const titleId = 'navoro-panel-title';
     this.launcher = h(
       'button',
@@ -104,7 +111,8 @@ export class Panel {
       form,
       this.#live,
     );
-    root.container.append(this.#panel, this.launcher);
+    root.container.append(this.#panel);
+    if (!hiddenLauncher) root.container.append(this.launcher);
   }
 
   get isOpen(): boolean {
@@ -113,21 +121,33 @@ export class Panel {
 
   /** Shows the panel and moves focus to the question input (our own UI only). */
   show(focusInput = true): void {
+    if (!this.#open && this.#hiddenLauncher) {
+      // Remember the host's trigger (whatever had focus outside Navoro) to restore focus on close.
+      const active = document.activeElement;
+      this.#opener = active instanceof HTMLElement && !active.closest('navoro-root') ? active : null;
+    }
     this.#setOpen(true);
     if (focusInput) this.#input.focus({ preventScroll: true });
   }
 
-  /** Hides the panel; optionally returns focus to the launcher. */
+  /** Hides the panel; optionally returns focus to the launcher (or the host's trigger). */
   hide(returnFocus = true): void {
     this.#setOpen(false);
-    if (returnFocus) this.launcher.focus({ preventScroll: true });
+    if (!returnFocus) return;
+    if (this.#hiddenLauncher) {
+      if (this.#opener?.isConnected) this.#opener.focus({ preventScroll: true });
+    } else {
+      this.launcher.focus({ preventScroll: true });
+    }
   }
 
   #setOpen(open: boolean): void {
+    const changed = this.#open !== open;
     this.#open = open;
     this.#panel.hidden = !open;
     this.launcher.setAttribute('aria-expanded', String(open));
     this.launcher.setAttribute('aria-label', `${open ? 'Close' : 'Open'} Navoro help`);
+    if (changed) this.#cb.onToggle?.(open);
   }
 
   /** True when focus is currently inside the panel. */
