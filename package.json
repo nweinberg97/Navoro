@@ -1,0 +1,39 @@
+{
+  "name": "navoro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Contextual intelligence and visual guidance for web software. Less searching. More doing.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "start": "node --disable-warning=ExperimentalWarning server/main.ts",
+    "dev": "node scripts/build.ts && node --disable-warning=ExperimentalWarning server/main.ts",
+    "db:migrate": "node --disable-warning=ExperimentalWarning scripts/migrate.ts",
+    "db:seed": "node --disable-warning=ExperimentalWarning scripts/seed.ts",
+    "db:reset": "node --disable-warning=ExperimentalWarning scripts/seed.ts --reset",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && tsc -p tsconfig.sdk.json",
+    "lint": "node scripts/lint.ts",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node --disable-warning=ExperimentalWarning --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
+    "test:integration": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 --test-reporter=spec \"tests/integration/**/*.test.ts\"",
+    "test:e2e": "node scripts/build.ts && node --disable-warning=ExperimentalWarning --test --test-concurrency=1 --test-reporter=spec \"tests/e2e/**/*.test.ts\"",
+    "check": "npm run typecheck && npm run lint && npm run build && npm test"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "esbuild": "0.28.2",
+    "playwright": "1.56.0",
+    "typescript": "6.0.3"
+  }
+}
