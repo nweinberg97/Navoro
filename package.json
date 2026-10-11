@@ -15,7 +15,7 @@
     "db:migrate": "node --disable-warning=ExperimentalWarning scripts/migrate.ts",
     "db:seed": "node --disable-warning=ExperimentalWarning scripts/seed.ts",
     "db:reset": "node --disable-warning=ExperimentalWarning scripts/seed.ts --reset",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && tsc -p tsconfig.sdk.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && tsc -p tsconfig.sdk.json && tsc -p tsconfig.tests-browser.json",
     "lint": "node scripts/lint.ts",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "node --disable-warning=ExperimentalWarning --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",

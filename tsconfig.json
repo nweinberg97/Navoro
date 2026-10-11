@@ -2,5 +2,5 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": { "lib": ["ES2023"], "types": ["node"] },
   "include": ["server/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "packages/contracts/src/**/*.ts"],
-  "exclude": ["tests/e2e/browser/**"]
+  "exclude": ["tests/unit/sdk-*.test.ts", "tests/e2e/**"]
 }

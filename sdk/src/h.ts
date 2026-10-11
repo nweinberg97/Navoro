@@ -12,6 +12,8 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = 
     if (value === null || value === undefined || value === false) continue;
     if (typeof value === 'function') el.addEventListener(key.replace(/^on/, '').toLowerCase(), value);
     else if (key === 'class') el.className = String(value);
+    // CSSOM assignment works under strict host CSPs (style-src without 'unsafe-inline'); a style attribute would not.
+    else if (key === 'style') el.style.cssText = String(value);
     else el.setAttribute(key, value === true ? '' : String(value));
   }
   for (const child of children) {

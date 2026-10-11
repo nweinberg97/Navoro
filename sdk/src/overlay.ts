@@ -28,10 +28,26 @@ export function createRoot(position: 'bottom-right' | 'bottom-left'): NavoroRoot
   // `all: initial` isolates from inherited host styles; huge z-index keeps us on top.
   host.style.cssText = 'all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483646;';
   const shadow = host.attachShadow({ mode: 'open' });
-  const style = document.createElement('style');
-  style.textContent = STYLES;
   const container = h('div', { class: position === 'bottom-left' ? 'root left' : 'root' });
-  shadow.append(style, container);
+  // Constructable stylesheets are not subject to the host page's style-src CSP, so Navoro
+  // works on hosts that forbid inline styles. Fall back to a <style> element elsewhere.
+  let adopted = false;
+  try {
+    if ('adoptedStyleSheets' in shadow && 'replaceSync' in CSSStyleSheet.prototype) {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(STYLES);
+      shadow.adoptedStyleSheets = [sheet];
+      adopted = true;
+    }
+  } catch {
+    adopted = false;
+  }
+  if (!adopted) {
+    const style = document.createElement('style');
+    style.textContent = STYLES;
+    shadow.append(style);
+  }
+  shadow.append(container);
   document.body.append(host);
   return {
     host,
