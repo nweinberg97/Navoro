@@ -14,6 +14,18 @@
 | Jobs | Durable rows in SQLite + in-process worker with step-level progress and cancellation | Refresh Learning is observable, cancellable and survives restarts (interrupted jobs are marked failed, not silently resumed). |
 | Retrieval | In-process BM25 with light stemming over chunks + structured objects | No external index for per-app corpora; interface allows a vector index later. |
 
+## Local mode (no server)
+
+The primary install. `navoro-pack` (scripts/navoro-pack.ts → server/knowledge/pack-builder.ts) runs the same extraction and element-mapping code as the hosted pipeline at build time and writes a static **knowledge pack** (format in packages/contracts/src/sdk-types.ts). The SDK loads it from the app's own origin and answers with **packages/engine**, a pure, synchronous port of the grounded composer:
+
+- retrieval: the same BM25 as the server (the server now imports it from the engine);
+- context: visible error codes select troubleshooting rules (only for problem-type or vague questions, so on-screen errors don't hijack unrelated ones); workflows whose controls are on screen rank higher;
+- hand-off: an intent check routes refunds, bugs, "talk to a human", "that didn't help" to a pre-filled `mailto:` the user reviews; every answer carries the contact so "No" can surface it;
+- start-where-you-are (`chooseStartStep`): resolves each step's target against the live DOM and starts at the step the user has reached;
+- `validatePack` treats the fetched pack as untrusted input (shape and size limits).
+
+Privacy rules travel in the pack and feed the same collector and blinders as hosted mode; `approvedNavoroIds: ['*']` (no element list) means "any element the developer tagged". No events, discovery or questions leave the page. Voice uses the browser's SpeechRecognition only where it reports on-device processing, unless the app opts into cloud recognition; the probe is lazy (first panel open) and skipped under automation, because probing a browser without a speech service can crash the tab.
+
 ## Topology
 
 ```

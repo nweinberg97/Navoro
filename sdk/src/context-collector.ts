@@ -59,7 +59,7 @@ function approvedCandidates(root: Document, policy: PublicPrivacyPolicy, blinder
   const seen = new Set<string>();
   for (const el of root.querySelectorAll('[data-navoro-id]')) {
     const navoroId = el.getAttribute('data-navoro-id') ?? '';
-    if (!navoroId || !approved.has(navoroId) || seen.has(navoroId)) continue;
+    if (!navoroId || !(approved.has('*') || approved.has(navoroId)) || seen.has(navoroId)) continue;
     if (isSensitiveField(el) || isInBlockedRegion(el, blinders)) continue;
     seen.add(navoroId);
     const visible = isVisible(el);
@@ -109,7 +109,7 @@ function collectErrors(root: Document, blinders: Blinders, approved: ReadonlySet
     near ??= el.closest('[data-navoro-id]');
     let nearNavoroId = near?.getAttribute('data-navoro-id') ?? null;
     // Only reference ids that are approved and not blocked.
-    if (near && nearNavoroId && (!approved.has(nearNavoroId) || isInBlockedRegion(near, blinders))) nearNavoroId = null;
+    if (near && nearNavoroId && (!(approved.has('*') || approved.has(nearNavoroId)) || isInBlockedRegion(near, blinders))) nearNavoroId = null;
     const code = el.getAttribute('data-navoro-error')?.trim() || null;
     const message = truncate(safeText(el, MAX_ERROR_CHARS * 2), MAX_ERROR_CHARS) || null;
     out.push({ code: code ? truncate(code, 64) : null, message, nearNavoroId });

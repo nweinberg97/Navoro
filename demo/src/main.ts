@@ -58,7 +58,9 @@ const popover = h(
   { class: 'popover', id: 'demo-pop', hidden: true, role: 'dialog', 'aria-label': 'Demo controls' },
   h('h2', { class: 'pop-title' }, 'Navoro install'),
   h('p', { class: 'muted small' }, 'This demo app embeds the Navoro SDK with a single script tag. Nothing else is shared with it.'),
-  h('dl', { class: 'kv' }, h('dt', {}, 'Origin'), h('dd', {}, config.origin), h('dt', {}, 'Environment'), h('dd', {}, config.env)),
+  config.mode === 'local'
+    ? h('dl', { class: 'kv' }, h('dt', {}, 'Mode'), h('dd', {}, 'Local: SDK and knowledge pack served by this site, no Navoro server'))
+    : h('dl', { class: 'kv' }, h('dt', {}, 'Origin'), h('dd', {}, config.origin), h('dt', {}, 'Environment'), h('dd', {}, config.env)),
   h('label', { for: 'demo-key', class: 'label' }, 'Public key'),
   keyInput,
   h(
@@ -89,7 +91,7 @@ document.addEventListener('click', (e) => {
 const crumb = h('span', { class: 'crumb' });
 const topbar = h('header', { class: 'topbar' }, menuBtn, crumb, h('div', { class: 'topbar-end' }, h('div', { class: 'pop-wrap' }, demoBtn, popover), h('span', { class: 'avatar avatar-me', role: 'img', 'aria-label': 'Signed in as Jordan Avery (synthetic)' }, 'JA')));
 
-const banner = h('div', { class: 'banner', role: 'status', hidden: true }, h('span', {}, `Navoro SDK couldn't be loaded from ${config.origin} — is the Navoro server running?`), h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Dismiss', onclick: () => { banner.hidden = true; } }, icon('close', 16)));
+const banner = h('div', { class: 'banner', role: 'status', hidden: true }, h('span', {}, config.mode === 'local' ? 'Navoro couldn’t be loaded from this site (/navoro/navoro.js).' : `Navoro SDK couldn't be loaded from ${config.origin} — is the Navoro server running?`), h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Dismiss', onclick: () => { banner.hidden = true; } }, icon('close', 16)));
 const outlet = h('main', { class: 'main', id: 'main' });
 const root = document.getElementById('app');
 root?.append(h('a', { href: '#main', class: 'skip', onclick: (e: Event) => { e.preventDefault(); outlet.querySelector<HTMLElement>('h1')?.focus(); } }, 'Skip to content'), sidebar, scrim, h('div', { class: 'content' }, banner, topbar, outlet));

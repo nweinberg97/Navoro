@@ -76,7 +76,7 @@ export type SessionEvent =
   | { type: 'REQUEST_SENT'; requestId: string }
   | { type: 'STREAM_EVENT'; requestId: string; phase: StreamPhase }
   | { type: 'RESULT'; requestId: string; result: GuidanceResult }
-  | { type: 'TARGETS_RESOLVED'; requestId: string }
+  | { type: 'TARGETS_RESOLVED'; requestId: string; /** Step the user has already reached ("start where you are"). */ startAt?: number }
   | { type: 'NEXT_STEP' }
   | { type: 'PREV_STEP' }
   | { type: 'COMPLETE' }
@@ -178,7 +178,10 @@ export function transition(state: SessionState, event: SessionEvent): Transition
       return accept({
         ...state,
         status: 'showing_guidance',
-        stepIndex: state.result.kind === 'workflow' ? 0 : null,
+        stepIndex:
+          state.result.kind === 'workflow'
+            ? Math.min(Math.max(0, Math.floor(event.startAt ?? 0)), Math.max(0, state.result.steps.length - 1))
+            : null,
       });
     case 'NEXT_STEP': {
       if (!state.result || state.result.steps.length === 0) return reject(state, 'invalid');

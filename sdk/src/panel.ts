@@ -11,7 +11,7 @@ import { btn, closeBtn, h, ICON_CHECK, svg } from './h.ts';
 import type { NavoroRoot } from './overlay.ts';
 import { IN_FLIGHT, type SessionState } from './state-machine.ts';
 import { markSvg } from './styles.ts';
-import { safeHttpUrl } from './text.ts';
+import { safeHttpUrl, safeLinkUrl } from './text.ts';
 
 export interface PanelCallbacks {
   onOpen(): void;
@@ -23,14 +23,21 @@ export interface PanelCallbacks {
   onFeedback(helpful: boolean): void;
   /** Fired whenever the panel opens or closes, by any path. */
   onToggle?(open: boolean): void;
+  /** Mic pressed: start or stop a spoken question. */
+  onVoice?(): void;
 }
 
 export interface PanelExtras {
   /** Last transmitted payload — shown only in development. */
   lastPayload: SanitizedContext | null;
   showInspector: boolean;
-  feedbackGiven: boolean;
+  feedbackGiven: 'helpful' | 'not_helpful' | null;
+  /** Local mode: answers come from the on-device engine and nothing is sent. */
+  local: boolean;
 }
+
+const ICON_MIC =
+  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><rect x="5.5" y="1.75" width="5" height="8" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
 const PHASE_TEXT: Record<string, string> = {
   retrieving: 'Looking through the docs…',
@@ -51,6 +58,7 @@ export class Panel {
   #lastAnnounced = '';
 
   readonly #hiddenLauncher: boolean;
+  readonly #mic: HTMLButtonElement;
   /** Host element that opened the panel (hidden-launcher mode) so focus can return to it. */
   #opener: HTMLElement | null = null;
 
@@ -81,7 +89,8 @@ export class Panel {
       'aria-label': 'Your question',
     });
     this.#submit = h('button', { class: 'btn primary', type: 'submit' }, 'Ask');
-    const form = h('form', { class: 'form', novalidate: true }, this.#input, this.#submit);
+    this.#mic = h('button', { class: 'mic', type: 'button', 'aria-label': 'Ask by voice', 'aria-pressed': 'false', hidden: true, onclick: () => cb.onVoice?.() }, svg(ICON_MIC));
+    const form = h('form', { class: 'form', novalidate: true }, this.#input, this.#mic, this.#submit);
     form.addEventListener('submit', (ev) => {
       ev.preventDefault();
       const q = this.#input.value.trim();
@@ -117,6 +126,24 @@ export class Panel {
 
   get isOpen(): boolean {
     return this.#open;
+  }
+
+  /** Shows the mic when voice is available; `title` says where recognition happens. */
+  setVoice(available: boolean, title = ''): void {
+    this.#mic.hidden = !available;
+    if (title) this.#mic.title = title;
+  }
+
+  setListening(listening: boolean): void {
+    this.#mic.setAttribute('aria-pressed', String(listening));
+    this.#mic.setAttribute('aria-label', listening ? 'Stop listening' : 'Ask by voice');
+    this.#input.placeholder = listening ? 'Listening…' : 'Ask how to do something…';
+    if (listening) this.#announce('Listening');
+  }
+
+  /** Puts recognised speech into the input so the user can see (and edit) what was heard. */
+  setDraft(text: string): void {
+    this.#input.value = text.slice(0, 500);
   }
 
   /** Shows the panel and moves focus to the question input (our own UI only). */
@@ -231,7 +258,7 @@ export class Panel {
         h(
           'details',
           { class: 'inspect' },
-          h('summary', {}, 'Inspect payload (dev only)'),
+          h('summary', {}, extras.local ? 'What Navoro read on this page (never leaves this device)' : 'Inspect payload (dev only)'),
           h('pre', {}, JSON.stringify(extras.lastPayload, null, 2)),
         ),
       );
@@ -254,12 +281,15 @@ export class Panel {
     const out: HTMLElement[] = [];
     if (result.mode === 'demo') {
       out.push(h('span', { class: 'badge' }, 'Demo mode — answer assembled from your docs without a language model'));
+    } else if (result.mode === 'local') {
+      out.push(h('span', { class: 'local' }, 'Answered on this device. Nothing was sent.'));
     }
     if (state.status !== 'completed') {
       out.push(h('p', { class: 'answer' }, result.answer));
       this.#announce(result.answer.slice(0, 200));
     }
-    if (!result.grounded || result.confidence < 0.5) {
+    const handoff = result.kind === 'unresolved' || result.confidence < 0.5 || extras.feedbackGiven === 'not_helpful';
+    if ((!result.grounded || result.confidence < 0.5) && result.kind !== 'unresolved') {
       out.push(
         h(
           'div',
@@ -275,9 +305,14 @@ export class Panel {
       const label = state.status === 'completed' ? 'Walk me through it again' : n === 1 ? 'Show me' : `Start walkthrough (${n} steps)`;
       out.push(h('div', { class: 'actions' }, btn('btn primary', label, () => this.#cb.onStartWalkthrough())));
     }
-    if (result.fallback) {
-      const url = safeHttpUrl(result.fallback.url);
-      out.push(url ? this.#extLink(result.fallback.label, url) : h('div', { class: 'note' }, result.fallback.label));
+    if (result.fallback && handoff) {
+      // Hand-off to a human: the user reviews and sends the pre-filled email themselves.
+      const url = safeLinkUrl(result.fallback.url);
+      const lead =
+        extras.feedbackGiven === 'not_helpful' && result.kind !== 'unresolved'
+          ? 'Sorry that didn’t solve it. Support can take it from here:'
+          : 'Support can take it from here:';
+      out.push(h('div', { class: 'handoff' }, h('p', {}, lead), url ? this.#extLink(result.fallback.label, url) : h('div', { class: 'note' }, result.fallback.label)));
     }
     if (result.citations.length > 0) {
       out.push(
@@ -291,7 +326,7 @@ export class Panel {
     }
     out.push(
       extras.feedbackGiven
-        ? h('div', { class: 'fb', role: 'status' }, 'Thanks for the feedback.')
+        ? h('div', { class: 'fb', role: 'status' }, extras.feedbackGiven === 'helpful' ? 'Glad that helped.' : 'Thanks for telling us.')
         : h(
             'div',
             { class: 'fb' },
@@ -304,6 +339,7 @@ export class Panel {
   }
 
   #extLink(label: string, url: string): HTMLAnchorElement {
+    if (url.startsWith('mailto:')) return h('a', { class: 'link', href: url }, `${label} →`);
     return h('a', { class: 'link', href: url, target: '_blank', rel: 'noopener noreferrer' }, `${label} ↗`);
   }
 }

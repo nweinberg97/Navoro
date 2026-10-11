@@ -10,7 +10,14 @@
  */
 import type { MatchStrategy } from '../../packages/contracts/src/sdk-types.ts';
 import type { CatalogRow, MappingRow } from '../data/types.ts';
-import { parseJson } from '../db/database.ts';
+function parseJson<T>(value: unknown, fallback: T): T {
+  if (typeof value !== 'string' || value === '') return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
 import { slug } from './extract.ts';
 
 const STALE_AFTER_DAYS = 30;

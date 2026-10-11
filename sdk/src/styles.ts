@@ -49,6 +49,17 @@ h2{margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;te
 .chip{border-radius:999px;padding:5px 11px;font-size:13px;text-align:left}
 .chip:hover,.secondary:hover:not(:disabled),.form input:focus-visible{border-color:var(--ink)}
 .form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#fff}
+.mic{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--muted);border:1px solid var(--line2);background:#fff}
+.mic:hover{color:var(--ink);border-color:var(--ink)}
+.mic[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.mic[aria-pressed="true"] svg{animation:listen 1.2s ease-in-out infinite}
+@keyframes listen{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.mic[aria-pressed="true"] svg{animation:none}}
+.resume{font-size:12px;color:var(--muted);background:var(--sunk);border-radius:6px;padding:4px 8px;align-self:flex-start}
+.local{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.local::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime-ink,#5b6e0b)}
+.handoff{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:#fff}
+.handoff p{margin:0;font-size:13px;color:var(--ink2)}
 .form input{flex:1;min-width:0;border-radius:10px;padding:8px 11px}
 .form input::placeholder{color:var(--subtle)}
 .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:7px 13px;font-weight:550;font-size:13.5px;white-space:nowrap}

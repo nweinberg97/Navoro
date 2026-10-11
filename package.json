@@ -24,7 +24,8 @@
     "test:integration": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 --test-reporter=spec \"tests/integration/**/*.test.ts\"",
     "test:e2e": "node scripts/build.ts && node --disable-warning=ExperimentalWarning --test --test-concurrency=1 --test-reporter=spec \"tests/e2e/**/*.test.ts\"",
     "check": "npm run typecheck && npm run lint && npm run build && npm test",
-    "release": "node scripts/build.ts --minify && node scripts/package-release.ts"
+    "release": "node scripts/build.ts --minify && node scripts/package-release.ts",
+    "navoro-pack": "node --disable-warning=ExperimentalWarning scripts/navoro-pack.ts"
   },
   "dependencies": {
     "react": "19.2.8",

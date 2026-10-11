@@ -111,4 +111,14 @@ for (const entry of entries) {
   await build(entry.options);
   console.log(`[build] ${entry.name} ✓`);
 }
+// Knowledge pack for the Lumen demo's local mode (served by the demo as /navoro/navoro-pack.json).
+{
+  const { buildPack, parsePackConfig } = await import('../server/knowledge/pack-builder.ts');
+  const configPath = path.join(root, 'demo', 'navoro.config.json');
+  const { pack } = await buildPack(parsePackConfig(JSON.parse(readFileSync(configPath, 'utf8'))), path.dirname(configPath));
+  mkdirSync(path.join(dist, 'demo'), { recursive: true });
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(path.join(dist, 'demo', 'navoro-pack.json'), JSON.stringify(pack));
+  console.log(`[build] demo knowledge pack ✓ (${pack.workflows.length} workflows)`);
+}
 console.log(`[build] done in ${Date.now() - started}ms${production ? ' (minified)' : ''}`);

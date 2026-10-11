@@ -1,6 +1,22 @@
 {
   "extends": "./tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2023"], "types": ["node"] },
-  "include": ["server/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "packages/contracts/src/**/*.ts"],
-  "exclude": ["tests/unit/sdk-*.test.ts", "tests/e2e/**"]
+  "compilerOptions": {
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "server/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "packages/contracts/src/**/*.ts",
+    "packages/engine/src/**/*.ts"
+  ],
+  "exclude": [
+    "tests/unit/sdk-*.test.ts",
+    "tests/e2e/**"
+  ]
 }

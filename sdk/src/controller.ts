@@ -12,6 +12,7 @@ import type {
   EnvironmentName,
   GuidanceResult,
   GuidanceStep,
+  KnowledgePack,
   PublicSdkConfig,
   SanitizedContext,
   SdkEvent,
@@ -24,6 +25,9 @@ import { createRoot, Overlay, type NavoroRoot } from './overlay.ts';
 import { Panel } from './panel.ts';
 import { resolveTarget } from './resolver.ts';
 import { IN_FLIGHT, SessionMachine, type SessionError, type SessionEvent, type SessionState } from './state-machine.ts';
+import { LocalSource } from './local.ts';
+import { listen, voiceAvailability, type Listening, type VoiceMode } from './voice.ts';
+import { chooseStartStep } from '../../packages/engine/src/pack.ts';
 
 export interface ControllerOptions {
   publicKey: string;
@@ -35,6 +39,9 @@ export interface ControllerOptions {
   launcher: 'default' | 'hidden';
   panelPosition: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | null;
   panelOffset: number | null;
+  /** Local mode: knowledge pack URL or object. Null → hosted mode. */
+  pack: string | KnowledgePack | null;
+  voice: VoiceMode;
 }
 
 export type StateListener = (state: SessionState) => void;
@@ -69,7 +76,12 @@ export class NavoroController {
   #discovery: DiscoveryScheduler | null = null;
   #abort: AbortController | null = null;
   #lastPayload: SanitizedContext | null = null;
-  #feedbackGiven = false;
+  #feedbackGiven: 'helpful' | 'not_helpful' | null = null;
+  readonly #local: LocalSource | null;
+  #listening: Listening | null = null;
+  #voiceHow: 'local' | 'local-download' | 'cloud' | null = null;
+  /** "Start where you are": the step a walkthrough began at, shown once with a note. */
+  #resume: { requestId: string; index: number } | null = null;
   #shownStepKey = '';
   #followCleanup: (() => void) | null = null;
   #destroyed = false;
@@ -85,6 +97,7 @@ export class NavoroController {
     this.#stateListeners = listeners;
     this.#panelListeners = panelListeners;
     this.#api = new NavoroApi(options);
+    this.#local = options.pack ? new LocalSource(options.pack, options.environment) : null;
   }
 
   get isDevelopment(): boolean {
@@ -96,8 +109,12 @@ export class NavoroController {
   async start(): Promise<void> {
     let config: PublicSdkConfig;
     try {
-      config = await this.#api.init();
+      config = this.#local ? await this.#local.load() : await this.#api.init();
     } catch (err) {
+      if (this.#local) {
+        console.warn(`[Navoro] ${err instanceof Error ? err.message : 'Knowledge pack could not be loaded.'} Navoro stays hidden.`);
+        return;
+      }
       if (err instanceof ApiError && err.kind === 'origin_not_allowed') {
         console.warn(`[Navoro] Origin ${location.origin} is not allowed for this key; add it in the dashboard. Navoro stays hidden.`);
         return;
@@ -125,7 +142,12 @@ export class NavoroController {
       onRetry: () => this.#retry(),
       onStartWalkthrough: () => this.#startWalkthrough(),
       onFeedback: (helpful) => this.#feedback(helpful),
-      onToggle: (open) => this.#emitPanel(open),
+      onToggle: (open) => {
+        if (open) this.#checkVoice();
+        if (!open) this.#stopListening();
+        this.#emitPanel(open);
+      },
+      onVoice: () => void this.#toggleVoice(),
     });
     this.#m.subscribe((state, event) => this.#onState(state, event));
     root.shadow.addEventListener('keydown', this.#onKeyDown as EventListener);
@@ -141,6 +163,50 @@ export class NavoroController {
       );
     }
     this.#render();
+  }
+
+  /** Probes voice support once, lazily, the first time the panel opens (never at page load). */
+  #voiceChecked = false;
+  #checkVoice(): void {
+    if (this.#voiceChecked || this.options.voice === 'off') return;
+    this.#voiceChecked = true;
+    void voiceAvailability(this.options.voice).then((how) => {
+      if (this.#destroyed || !this.#panel) return;
+      this.#voiceHow = how;
+      const where = how === 'cloud' ? 'Speech is recognised by your browser’s speech service.' : 'Speech is recognised on this device.';
+      this.#panel.setVoice(how !== null, how ? where : '');
+    });
+  }
+
+  // ── voice ─────────────────────────────────────────────────────────────────
+
+  async #toggleVoice(): Promise<void> {
+    if (this.#listening) {
+      this.#stopListening();
+      return;
+    }
+    const panel = this.#panel;
+    if (!panel || !this.#voiceHow) return;
+    panel.setListening(true);
+    let finalText = '';
+    this.#listening = await listen(
+      this.#voiceHow,
+      (text, final) => {
+        panel.setDraft(text);
+        if (final) finalText = text;
+      },
+      (error) => {
+        this.#listening = null;
+        panel.setListening(false);
+        if (!error && finalText) void this.ask(finalText);
+      },
+    );
+  }
+
+  #stopListening(): void {
+    this.#listening?.stop();
+    this.#listening = null;
+    this.#panel?.setListening(false);
   }
 
   // ── public surface ────────────────────────────────────────────────────────
@@ -185,7 +251,7 @@ export class NavoroController {
   }
 
   getLastPayload(): SanitizedContext | null {
-    if (!this.isDevelopment && !this.options.debug) return null;
+    if (!this.isDevelopment && !this.options.debug && !this.#local) return null;
     return this.#lastPayload ? (JSON.parse(JSON.stringify(this.#lastPayload)) as SanitizedContext) : null;
   }
 
@@ -196,6 +262,7 @@ export class NavoroController {
     this.#abort?.abort();
     this.#abort = null;
     this.#stopFollowing();
+    this.#stopListening();
     this.#events?.flush(true);
     this.#events?.dispose();
     this.#discovery?.dispose();
@@ -218,7 +285,7 @@ export class NavoroController {
   async #run(requestId: string, question: string): Promise<void> {
     const config = this.#config;
     if (!config) return;
-    this.#feedbackGiven = false;
+    this.#feedbackGiven = null;
     let context: SanitizedContext;
     try {
       context = collectContext(document, config.privacy);
@@ -230,6 +297,21 @@ export class NavoroController {
 
     const controller = new AbortController();
     this.#abort = controller;
+    if (this.#local) {
+      // Local mode: the on-device engine answers; nothing is sent anywhere.
+      this.#m.send({ type: 'REQUEST_SENT', requestId });
+      this.#m.send({ type: 'STREAM_EVENT', requestId, phase: 'retrieving' });
+      await new Promise((resolve) => setTimeout(resolve, 0)); // let the UI paint and Stop/Escape register
+      if (controller.signal.aborted || this.#abort !== controller) return;
+      this.#abort = null;
+      try {
+        const result = this.#local.answer({ question, context, requestId, ...(this.#m.state.sessionId ? { sessionId: this.#m.state.sessionId } : {}) });
+        this.#handleResult(requestId, result);
+      } catch {
+        this.#m.send({ type: 'FAIL', requestId, error: { code: 'invalid_response', message: 'Navoro couldn’t read its knowledge pack.', retryable: false } });
+      }
+      return;
+    }
     const fail = (error: SessionError) => this.#m.send({ type: 'FAIL', requestId, error });
     let settled = false;
     const send = (event: SessionEvent) => this.#m.send(event);
@@ -271,9 +353,16 @@ export class NavoroController {
     if (!this.#m.send({ type: 'RESULT', requestId, result }).accepted) return; // stale → dropped
     this.#track('guidance_shown');
     if (result.steps.length === 0) return;
-    // Targets are resolved lazily per step (local, read-only) because the host DOM
-    // changes as the user moves through a workflow; see #syncSteps.
-    this.#m.send({ type: 'TARGETS_RESOLVED', requestId });
+    // "Start where you are": check which steps' controls are on screen right now and
+    // begin at the step the user has already reached. Read-only, local.
+    let startAt = 0;
+    if (result.kind === 'workflow') {
+      startAt = chooseStartStep(result.steps.map((step) => (step.target ? resolveTarget(step.target).element !== null : null)));
+    }
+    this.#resume = startAt > 0 ? { requestId, index: startAt } : null;
+    // Later targets are resolved lazily per step because the host DOM changes as the
+    // user moves through a workflow; see #syncSteps.
+    this.#m.send({ type: 'TARGETS_RESOLVED', requestId, startAt });
   }
 
   #retry(): void {
@@ -298,7 +387,7 @@ export class NavoroController {
   }
 
   #feedback(helpful: boolean): void {
-    this.#feedbackGiven = true;
+    this.#feedbackGiven = helpful ? 'helpful' : 'not_helpful';
     this.#track(helpful ? 'feedback_helpful' : 'feedback_not_helpful');
     this.#render();
   }
@@ -363,6 +452,7 @@ export class NavoroController {
         },
         onClose: () => this.#dismissSteps(),
         relocate: resolve,
+        note: this.#resumeNote(state.requestId, index),
       },
       panelHadFocus || undefined,
     );
@@ -435,6 +525,13 @@ export class NavoroController {
     this.#followCleanup = null;
   }
 
+  #resumeNote(requestId: string | null, index: number): string | null {
+    const resume = this.#resume;
+    if (!resume || resume.requestId !== requestId || resume.index !== index) return null;
+    this.#resume = null; // only the first time this step is shown
+    return index === 1 ? 'You’ve already done step 1, so let’s pick up here.' : `You’ve already done steps 1–${index}, so let’s pick up here.`;
+  }
+
   #dismissSteps(): void {
     if (this.#m.send({ type: 'DISMISS', scope: 'steps' }).accepted) this.#track('guidance_dismissed');
   }
@@ -450,8 +547,10 @@ export class NavoroController {
     if (!this.#panel) return;
     this.#panel.render(this.#m.state, {
       lastPayload: this.#lastPayload,
-      showInspector: this.isDevelopment,
+      // Local mode always lets people see what was read: it never leaves the device.
+      showInspector: this.isDevelopment || this.#local !== null,
       feedbackGiven: this.#feedbackGiven,
+      local: this.#local !== null,
     });
   }
 

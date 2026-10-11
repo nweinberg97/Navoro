@@ -1,18 +1,23 @@
 /**
- * Installs the Navoro SDK exactly the way a customer would: one <script> tag
- * pointing at the Navoro origin, carrying the public key and environment.
+ * Installs the Navoro SDK exactly the way a customer would, in one of two modes:
+ *
+ *   hosted (default): one <script> tag pointing at the Navoro server, with a public key.
+ *   local (?navoroMode=local): the SDK file and a knowledge pack served from THIS site.
+ *     No Navoro server, works offline, nothing about the user leaves the browser.
+ *
  * The app exposes nothing else to the SDK and works fully without it.
  */
 import { h } from './ui.ts';
 
 export interface NavoroConfig {
+  mode: string;
   origin: string;
   key: string;
   env: string;
 }
 
-const DEFAULTS: NavoroConfig = { origin: 'http://localhost:4400', key: 'nav_pk_demo_lumen_dev', env: 'development' };
-const LS = { origin: 'lumen-demo.navoroOrigin', key: 'lumen-demo.navoroKey', env: 'lumen-demo.navoroEnv' } as const;
+const DEFAULTS: NavoroConfig = { mode: 'hosted', origin: 'http://localhost:4400', key: 'nav_pk_demo_lumen_dev', env: 'development' };
+const LS = { mode: 'lumen-demo.navoroMode', origin: 'lumen-demo.navoroOrigin', key: 'lumen-demo.navoroKey', env: 'lumen-demo.navoroEnv' } as const;
 
 function read(key: string): string | null {
   try {
@@ -32,7 +37,7 @@ function write(key: string, value: string): void {
 export function resolveConfig(): NavoroConfig {
   const q = new URLSearchParams(location.search);
   const out = { ...DEFAULTS };
-  for (const [field, param] of [['origin', 'navoroOrigin'], ['key', 'navoroKey'], ['env', 'navoroEnv']] as const) {
+  for (const [field, param] of [['mode', 'navoroMode'], ['origin', 'navoroOrigin'], ['key', 'navoroKey'], ['env', 'navoroEnv']] as const) {
     const fromQuery = q.get(param)?.trim();
     if (fromQuery) {
       out[field] = field === 'origin' ? fromQuery.replace(/\/+$/, '') : fromQuery;
@@ -41,6 +46,7 @@ export function resolveConfig(): NavoroConfig {
       out[field] = read(LS[field]) || DEFAULTS[field];
     }
   }
+  if (out.mode !== 'local') out.mode = 'hosted';
   return out;
 }
 
@@ -67,6 +73,13 @@ export function resetConfig(): void {
 }
 
 export function installNavoro(config: NavoroConfig, onError: () => void): void {
+  if (config.mode === 'local') {
+    // Local mode: both files are served by this site. This is the whole install.
+    const local = h('script', { src: '/navoro/navoro.js', 'data-navoro-pack': '/navoro/navoro-pack.json', defer: true });
+    local.addEventListener('error', onError);
+    document.head.append(local);
+    return;
+  }
   const script = h('script', {
     src: `${config.origin}/sdk/v1/navoro.js`,
     'data-navoro-key': config.key,

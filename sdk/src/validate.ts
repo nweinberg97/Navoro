@@ -81,7 +81,7 @@ export function isGuidanceResult(v: unknown): v is GuidanceResult {
     Array.isArray(v.citations) &&
     v.citations.length <= 20 &&
     v.citations.every(isCitation) &&
-    (v.mode === 'llm' || v.mode === 'demo') &&
+    (v.mode === 'llm' || v.mode === 'demo' || v.mode === 'local') &&
     (fb === null || (isObj(fb) && isStr(fb.label, 500) && isStrOrNull(fb.url, 2000)))
   );
 }

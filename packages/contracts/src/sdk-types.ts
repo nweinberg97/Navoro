@@ -45,7 +45,8 @@ export interface PublicPrivacyPolicy {
   /**
    * Allowlist: only elements whose data-navoro-id appears here (approved application
    * metadata) may contribute labels/state to the outbound context. Unknown elements
-   * are never transmitted.
+   * are never transmitted. `['*']` (local mode without an element list) means every
+   * element the developer tagged with data-navoro-id is approved: tagging is the opt-in.
    */
   approvedNavoroIds: string[];
   allowlistOnly: true;
@@ -157,8 +158,12 @@ export interface GuidanceResult {
   workflow: { id: string; title: string } | null;
   steps: GuidanceStep[];
   citations: Citation[];
-  /** 'llm' when a configured model produced the answer, 'demo' when assembled locally without a model. */
-  mode: 'llm' | 'demo';
+  /**
+   * 'llm': a configured model produced the answer on the Navoro server.
+   * 'demo': the Navoro server assembled it from retrieved docs without a model.
+   * 'local': answered entirely in the browser from a knowledge pack; nothing was sent anywhere.
+   */
+  mode: 'llm' | 'demo' | 'local';
   /** Suggested next action when the answer is unresolved or low-confidence. */
   fallback: { label: string; url: string | null } | null;
 }
@@ -215,4 +220,82 @@ export interface DiscoveryRequest {
   viewport: { width: number; height: number };
   documentHeight: number;
   elements: DiscoveredElement[];
+}
+
+// ── Knowledge packs (offline / local mode) ───────────────────────────────────
+//
+// A knowledge pack is everything the SDK needs to answer and guide without a
+// server: structured workflows, troubleshooting rules, UI terms, searchable
+// passages, element mappings and the privacy policy. It is produced at build
+// time by `navoro-pack` (scripts/navoro-pack.ts) from a navoro.config.json and
+// served as a static file next to the app. In local mode the SDK makes no
+// network requests other than fetching this file from the app's own origin.
+
+export const KNOWLEDGE_PACK_FORMAT = 'navoro-pack' as const;
+export const KNOWLEDGE_PACK_VERSION = 1 as const;
+
+export interface PackWorkflow {
+  id: string;
+  title: string;
+  summary: string;
+  kind: 'task' | 'onboarding' | 'troubleshooting';
+  prerequisites: string[];
+  confidence: number;
+  sourceTitle: string;
+  excerpt: string;
+  steps: Array<{ title: string; instruction: string; targetKey: string | null }>;
+}
+
+export interface PackItem {
+  id: string;
+  kind: 'feature' | 'ui_concept' | 'known_error' | 'troubleshooting';
+  title: string;
+  body: string;
+  /** known_error: code, resolution, labels. ui_concept: label. */
+  data: { code?: string | null; resolution?: string | null; labels?: string[]; label?: string };
+  sourceTitle: string;
+}
+
+export interface PackChunk {
+  id: string;
+  heading: string | null;
+  text: string;
+  sourceTitle: string;
+}
+
+export interface PackMapping {
+  key: string;
+  label: string;
+  strategies: MatchStrategy[];
+  confidence: number;
+  validation: 'valid' | 'unverified' | 'uncertain' | 'broken';
+}
+
+export interface KnowledgePack {
+  format: typeof KNOWLEDGE_PACK_FORMAT;
+  version: typeof KNOWLEDGE_PACK_VERSION;
+  builtAt: string;
+  /** Short content hash; changes whenever the pack's content changes. */
+  hash: string;
+  application: { name: string };
+  launcher: { greeting: string; suggestions: string[] };
+  supportUrl: string | null;
+  /** Where unsolved problems go: the Contact support button opens an email to this address. */
+  supportEmail: string | null;
+  /**
+   * Privacy policy enforced in the browser. In local mode nothing is transmitted, so
+   * `observe` is what the on-device engine may read; never-collect rules and the
+   * built-in blinders apply exactly as in hosted mode.
+   */
+  privacy: {
+    observe: ContextCategory[];
+    blockedNavoroIds: string[];
+    blockedSelectors: string[];
+    approvedNavoroIds: string[];
+  };
+  sources: Array<{ title: string; hash: string }>;
+  workflows: PackWorkflow[];
+  items: PackItem[];
+  chunks: PackChunk[];
+  mappings: PackMapping[];
 }

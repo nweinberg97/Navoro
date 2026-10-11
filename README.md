@@ -2,16 +2,80 @@
 
 **Less searching. More doing.**
 
-Navoro is an embeddable intelligence layer for web software. A customer installs one script tag; Navoro learns their product from documentation, help articles, Markdown files, public docs URLs and YouTube transcripts; and when a user asks "How do I create a report?", it answers from that knowledge *and points at the exact control on screen*, walking them through the workflow step by step — without leaving the app.
+Navoro is in-app help that **shows people how to do things**. A user types or says what they're trying to do; Navoro answers from your product's docs, **points at the exact control on screen** and walks them through it step by step, starting from wherever they already are. When it's something a guide can't fix (a billing problem, a bug, "I need a human"), it hands off to your support email with the question already filled in.
 
-It is read-only by design (it explains, highlights and points; it never clicks, types or submits), allowlist-first about what it may observe, and keeps every secret server-side.
+It runs **entirely in your users' browsers**: no server to host, works offline, and nothing about the user is ever sent anywhere. It can read the screen for context, but only what your privacy rules allow. It never clicks, types or submits for anyone.
 
 - **Landing page:** https://nweinberg97.github.io/Navoro/
 - **Download (prebuilt, no install):** https://github.com/nweinberg97/Navoro/releases/latest/download/navoro.zip
 
 ---
 
-## Run it in two minutes
+## Add it to any web app (no server)
+
+**1. Describe your app** in a `navoro.config.json`:
+
+```json
+{
+  "name": "Your App",
+  "docs": ["docs/help"],
+  "supportEmail": "support@yourapp.com",
+  "privacy": {
+    "neverCollect": [
+      { "selector": ".card", "reason": "User content" },
+      { "navoroId": "billing.payment", "reason": "Payment details" }
+    ]
+  }
+}
+```
+
+`docs` takes Markdown/text files, folders, or public URLs. Help articles written as `## How to …` with numbered steps and **bold** button names become walkthroughs; `## Troubleshooting: <message> (CODE)` sections become error fixes; a `## Glossary` becomes term definitions. That's the shape most help centers already have.
+
+**2. Build the knowledge pack** (a single static JSON file, typically 20–50 KB):
+
+```bash
+npm run navoro-pack -- path/to/navoro.config.json      # add --check in CI to fail when a step can't find its button
+```
+
+It prints a coverage report: which steps can point at a control, which can't and why, and which regions will never be read.
+
+**3. Add one script tag** and serve both files from your own site:
+
+```html
+<script src="/navoro/navoro.js" data-navoro-pack="/navoro/navoro-pack.json" defer></script>
+```
+
+`navoro.js` is `dist/sdk/navoro.js` (68 KB, 24 KB gzipped, no dependencies). That's the whole install.
+
+**Optional, but makes pointing reliable across redesigns:** add `data-navoro-id="reports.new"` to the controls your docs mention, and mark errors with `data-navoro-error="CODE"` so "what's wrong?" can explain them. Without an `elements` list in the config, any element you tag is allowed as context (tagging is the opt-in) and steps match controls by their accessible name or visible text.
+
+### What it does with a question
+
+| The user… | Navoro… |
+|---|---|
+| asks how to do something | answers in one line, then spotlights each control in turn ("Step 2 of 7"), advancing as they click. If they're already partway (e.g. on the form), it starts at the right step and says so. |
+| is looking at an error and asks "what's wrong?" | explains that error from your docs and points at the field to fix. Errors on screen don't hijack unrelated questions. |
+| asks something ambiguous ("how do I change it?") | picks the workflow whose controls are on the current screen. |
+| asks something the docs don't cover | says so instead of guessing, and offers support. |
+| needs a human (refund, bug, "talk to someone", "that didn't help") | hands off: **Email support** opens their mail app with the question and current page filled in, for them to review and send. "No" on any answer offers the same. |
+| prefers to speak | taps the mic. Navoro only shows it where the browser recognises speech **on the device**; set `data-navoro-voice="any"` to also allow the browser's cloud speech service, or `"off"`. |
+
+### Privacy, enforced in the browser
+
+- Nothing is sent anywhere. The only requests are the two static files above, from your own origin. (Tested: the browser tests fail on any other request.)
+- Navoro reads only what your rules allow: by default the page route, title, the labels and states of tagged controls, and errors you've marked. Never input values, never keystrokes, never screenshots.
+- `neverCollect` regions (by `data-navoro-id` or CSS selector) are skipped entirely, and so is anything marked `data-navoro-sensitive`, plus built-in exclusions for passwords, one-time codes and payment fields.
+- Users can open **What Navoro read on this page** in the panel to see exactly what it used.
+
+Try it: run the demo (below) and open **http://localhost:4500/?navoroMode=local**. That's the Lumen app with the SDK and pack served by the app itself; no Navoro server involved.
+
+### Hosted mode (optional)
+
+The rest of this repo is an optional hosted tier for teams: a dashboard to manage docs and guidance without redeploying, Refresh Learning, analytics on what users ask, and optional model-generated answers. Same SDK, same knowledge format; use `data-navoro-key` instead of `data-navoro-pack`. Everything below describes running it.
+
+---
+
+## Run the hosted tier and demos in two minutes
 
 You need **Node.js 22.18 or newer** (https://nodejs.org). Nothing else — Navoro has zero runtime dependencies and uses Node's built-in SQLite.
 
@@ -84,9 +148,10 @@ server/            Node HTTP server (no framework), run directly from TypeScript
 sdk/src/           Embeddable SDK (framework-free, zero deps, shadow DOM)
 web/src/site       Public website     web/src/app  Admin dashboard (React)    web/src/ui  shared components
 demo/              Lumen Analytics — the fictional customer app
-packages/contracts Versioned SDK⇄backend and admin API types
+packages/contracts Versioned SDK⇄backend and admin API types, knowledge pack format
+packages/engine    On-device guidance engine (retrieval, answers, hand-off, start-where-you-are)
 tests/             unit (node:test), integration (real server), e2e (Playwright + Chromium)
-scripts/           build, build-pages, package-release, lint, migrate, seed
+scripts/           navoro-pack, build, build-pages, package-release, lint, migrate, seed
 start.mjs          Launcher used by the downloadable release
 docs/              ARCHITECTURE.md · SECURITY.md · REFERENCE_AUDIT.md
 ```
@@ -98,6 +163,7 @@ docs/              ARCHITECTURE.md · SECURITY.md · REFERENCE_AUDIT.md
 | `npm run dev` | Build bundles and start the server (+ demo app) |
 | `npm start` | Start the server without rebuilding |
 | `npm run build` | Build site, dashboard, SDK and demo bundles into `dist/` |
+| `npm run navoro-pack -- <config>` | Build an offline knowledge pack from a navoro.config.json (`--check` fails on unpointable steps) |
 | `npm run typecheck` | TypeScript across server, web, SDK and browser tests |
 | `npm run lint` | Security-invariant checks (tenant scoping, no eval/innerHTML, no secrets, SDK read-only) |
 | `npm test` | Unit + integration tests (unit tests include real-Chromium SDK tests) |
@@ -111,7 +177,7 @@ CI (`.github/workflows/ci.yml`) runs typecheck, lint, build, unit, integration a
 
 ## Tests
 
-Last full run in this repository: **134 unit, 107 integration, 10 end-to-end — all passing** (`npm test && npm run test:e2e`). Highlights:
+Last full run in this repository: **153 unit, 107 integration, 10 end-to-end — all passing** (`npm test && npm run test:e2e`). Highlights:
 
 - Tenant isolation at the API *and* database layer (cross-tenant inserts rejected by triggers), SDK tokens bound to app + environment + origin.
 - Privacy Blinders: synthetic card numbers, passwords, blocked regions and API tokens never appear in any outbound SDK request.

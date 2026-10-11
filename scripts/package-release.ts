@@ -59,6 +59,10 @@ copy('.env.example');
 copy('docs', undefined, false);
 copy('server', (file) => /\.(ts|sql|md)$/.test(file) && !/\.test\.ts$/.test(file));
 copy('packages/contracts/src', (file) => file.endsWith('.ts'));
+copy('packages/engine/src', (file) => file.endsWith('.ts'));
+copy('scripts/navoro-pack.ts');
+copy('demo/navoro.config.json');
+copy('demo/navoro.elements.json');
 copy('dist', (file) => !file.endsWith('.map'));
 copy('demo/index.html');
 copy('demo/help');
@@ -80,6 +84,7 @@ const releasePkg: Record<string, unknown> = {
   scripts: {
     start: 'node start.mjs',
     ...(scripts['start'] ? { server: scripts['start'] } : {}),
+    ...(scripts['navoro-pack'] ? { 'navoro-pack': scripts['navoro-pack'] } : {}),
   },
 };
 writeFileSync(path.join(outDir, 'package.json'), `${JSON.stringify(releasePkg, null, 2)}\n`);

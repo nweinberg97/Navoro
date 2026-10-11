@@ -1,0 +1,194 @@
+[
+  {
+    "navoroId": "nav.dashboard",
+    "label": "Dashboard",
+    "role": "link",
+    "route": "/#/dashboard"
+  },
+  {
+    "navoroId": "nav.reports",
+    "label": "Reports",
+    "role": "link",
+    "route": "/#/dashboard"
+  },
+  {
+    "navoroId": "nav.integrations",
+    "label": "Integrations",
+    "role": "link",
+    "route": "/#/dashboard"
+  },
+  {
+    "navoroId": "nav.settings",
+    "label": "Settings",
+    "role": "link",
+    "route": "/#/dashboard"
+  },
+  {
+    "navoroId": "dashboard.kpi-row",
+    "label": "Key metrics",
+    "role": "region",
+    "route": "/#/dashboard"
+  },
+  {
+    "navoroId": "dashboard.date-range",
+    "label": "Date range",
+    "role": "combobox",
+    "route": "/#/dashboard"
+  },
+  {
+    "navoroId": "reports.new-button",
+    "label": "New report",
+    "role": "button",
+    "route": "/#/reports"
+  },
+  {
+    "navoroId": "reports.list",
+    "label": "Reports list",
+    "role": "table",
+    "route": "/#/reports"
+  },
+  {
+    "navoroId": "report.form",
+    "label": "New report form",
+    "role": "form",
+    "route": "/#/reports/new"
+  },
+  {
+    "navoroId": "report.name",
+    "label": "Report name",
+    "role": "textbox",
+    "route": "/#/reports/new"
+  },
+  {
+    "navoroId": "report.source",
+    "label": "Data source",
+    "role": "combobox",
+    "route": "/#/reports/new"
+  },
+  {
+    "navoroId": "report.chart-type",
+    "label": "Chart type",
+    "role": "group",
+    "route": "/#/reports/new"
+  },
+  {
+    "navoroId": "report.schedule",
+    "label": "Schedule",
+    "role": "combobox",
+    "route": "/#/reports/new"
+  },
+  {
+    "navoroId": "report.save-button",
+    "label": "Create report",
+    "role": "button",
+    "route": "/#/reports/new"
+  },
+  {
+    "navoroId": "report.cancel-button",
+    "label": "Cancel",
+    "role": "button",
+    "route": "/#/reports/new"
+  },
+  {
+    "navoroId": "integrations.warehouse-card",
+    "label": "Warehouse",
+    "role": "region",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "integrations.warehouse-connect",
+    "label": "Connect warehouse",
+    "role": "button",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "warehouse.host",
+    "label": "Host",
+    "role": "textbox",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "warehouse.database",
+    "label": "Database",
+    "role": "textbox",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "warehouse.username",
+    "label": "Username",
+    "role": "textbox",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "warehouse.password",
+    "label": "Password",
+    "role": "textbox",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "warehouse.test-button",
+    "label": "Test connection",
+    "role": "button",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "warehouse.save-button",
+    "label": "Save connection",
+    "role": "button",
+    "route": "/#/integrations"
+  },
+  {
+    "navoroId": "settings.workspace-name",
+    "label": "Workspace name",
+    "role": "textbox",
+    "route": "/#/settings"
+  },
+  {
+    "navoroId": "settings.timezone",
+    "label": "Time zone",
+    "role": "combobox",
+    "route": "/#/settings"
+  },
+  {
+    "navoroId": "settings.invite-button",
+    "label": "Invite teammate",
+    "role": "button",
+    "route": "/#/settings"
+  },
+  {
+    "navoroId": "settings.api-token",
+    "label": "API token",
+    "role": "textbox",
+    "route": "/#/settings"
+  },
+  {
+    "navoroId": "settings.save-button",
+    "label": "Save changes",
+    "role": "button",
+    "route": "/#/settings"
+  },
+  {
+    "navoroId": "settings.billing-tab",
+    "label": "Billing",
+    "role": "link",
+    "route": "/#/settings"
+  },
+  {
+    "navoroId": "billing.payment-region",
+    "label": "Payment method",
+    "role": "region",
+    "route": "/#/settings/billing"
+  },
+  {
+    "navoroId": "billing.card-number",
+    "label": "Card number",
+    "role": "textbox",
+    "route": "/#/settings/billing"
+  },
+  {
+    "navoroId": "billing.tax-id",
+    "label": "Tax ID",
+    "role": "textbox",
+    "route": "/#/settings/billing"
+  }
+]

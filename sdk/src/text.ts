@@ -69,6 +69,12 @@ export function sanitizeRoute(pathname: string, hash = ''): string {
 }
 
 /** Only http(s) URLs may be opened from server data. Returns the normalized URL or null. */
+/** http(s) links, plus mailto: to a single plain address (support hand-off). */
+export function safeLinkUrl(value: string | null | undefined): string | null {
+  if (value && /^mailto:[^\s@<>()"?]+@[^\s@<>()"?]+\.[^\s@<>()"?]+(\?[^\s<>"]*)?$/i.test(value)) return value;
+  return safeHttpUrl(value);
+}
+
 export function safeHttpUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   try {

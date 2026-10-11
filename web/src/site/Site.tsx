@@ -294,22 +294,25 @@ function Install() {
       <div className="s-wrap s-split s-split--install">
         <div className="s-split__lead">
           <h2 className="s-h2" id="install-title">
-            One script tag.
+            One script tag. No server.
           </h2>
           <ol className="s-steps">
             <li>
-              <h3>Add the snippet</h3>
-              <p>Paste it into your app’s layout with your workspace’s public key.</p>
-            </li>
-            <li>
-              <h3>Mark key controls</h3>
+              <h3>Point it at your docs</h3>
               <p>
-                Add <code>data-navoro-id</code> to the buttons that matter, for targets that survive redesigns.
+                List your help articles and privacy rules in <code>navoro.config.json</code>, then run{' '}
+                <code>navoro-pack</code>. It writes one small knowledge file.
               </p>
             </li>
             <li>
-              <h3>Teach it</h3>
-              <p>Connect your docs in the dashboard and run learning. Review, then publish.</p>
+              <h3>Add the script tag</h3>
+              <p>Serve the SDK and the knowledge file from your own site. Everything runs in your users’ browsers, offline too.</p>
+            </li>
+            <li>
+              <h3>Mark key controls (optional)</h3>
+              <p>
+                Add <code>data-navoro-id</code> to the buttons that matter, so pointing survives redesigns.
+              </p>
             </li>
           </ol>
         </div>
@@ -323,15 +326,11 @@ function Install() {
                 {'\n  '}
                 <span className="t-attr">src</span>
                 <span className="t-p">=</span>
-                <span className="t-str">"https://navoro.example/sdk/v1/navoro.js"</span>
+                <span className="t-str">"/navoro/navoro.js"</span>
                 {'\n  '}
-                <span className="t-attr">data-navoro-key</span>
+                <span className="t-attr">data-navoro-pack</span>
                 <span className="t-p">=</span>
-                <span className="t-str">"nav_pk_…"</span>
-                {'\n  '}
-                <span className="t-attr">data-navoro-env</span>
-                <span className="t-p">=</span>
-                <span className="t-str">"production"</span>
+                <span className="t-str">"/navoro/navoro-pack.json"</span>
                 {'\n  '}
                 <span className="t-attr">defer</span>
                 <span className="t-p">&gt;&lt;/</span>

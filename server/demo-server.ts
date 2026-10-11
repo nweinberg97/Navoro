@@ -36,6 +36,9 @@ export function createDemoServer(options: { navoroOrigin: string }): http.Server
       return;
     }
     if (pathname.startsWith('/assets/') && serveFile(res, distDir, pathname.slice('/assets/'.length))) return;
+    // Local mode: the SDK and the knowledge pack are plain static files on the app's own origin.
+    if (pathname === '/navoro/navoro.js' && serveFile(res, path.join(ROOT_DIR, 'dist', 'sdk'), 'navoro.js')) return;
+    if (pathname === '/navoro/navoro-pack.json' && serveFile(res, distDir, 'navoro-pack.json', { 'content-type': 'application/json; charset=utf-8' })) return;
     if (pathname.startsWith('/help/') && pathname.endsWith('.md') && serveFile(res, path.join(demoDir, 'help'), pathname.slice('/help/'.length), { 'access-control-allow-origin': '*' })) return;
     if (pathname === '/' || pathname === '/index.html') {
       serveFile(res, demoDir, 'index.html', { 'content-security-policy': csp, 'x-frame-options': 'DENY' });

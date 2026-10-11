@@ -75,6 +75,8 @@ export interface StepView {
   onClose(): void;
   /** Re-run the resolver; return the new element or null. */
   relocate(): Element | null;
+  /** Optional context line, e.g. "You're already past step 2 — picking up here." */
+  note?: string | null;
 }
 
 const GAP = 12;
@@ -232,6 +234,7 @@ export class Overlay {
         closeBtn('Close walkthrough', () => view.onClose()),
       ),
       h('div', { class: 'bar', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round(((index + 1) / total) * 100)}%` })),
+      view.note ? h('div', { class: 'resume' }, view.note) : null,
       h('h3', { id: titleId }, step.title),
       h('p', {}, step.instruction),
       missing && missingText ? h('div', { class: 'miss', role: 'status' }, missingText) : null,

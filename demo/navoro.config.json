@@ -1,0 +1,42 @@
+{
+  "name": "Lumen Analytics",
+  "docs": [
+    "../server/seed/lumen-help-center.md",
+    "help"
+  ],
+  "elements": "navoro.elements.json",
+  "privacy": {
+    "observe": [
+      "route",
+      "pageTitle",
+      "headings",
+      "elements",
+      "visibleErrors"
+    ],
+    "neverCollect": [
+      {
+        "navoroId": "billing.payment-region",
+        "reason": "Payment details (synthetic sensitive region)"
+      },
+      {
+        "navoroId": "settings.api-token",
+        "reason": "Workspace API token"
+      },
+      {
+        "selector": "[data-lumen-private]",
+        "reason": "Anything the app marks private"
+      }
+    ]
+  },
+  "launcher": {
+    "greeting": "Hi! Ask how to do anything in Lumen \u2014 I\u2019ll point you to the right place.",
+    "suggestions": [
+      "How do I create a report?",
+      "Why can\u2019t I connect my warehouse?",
+      "Where do I change the time zone?"
+    ]
+  },
+  "supportUrl": null,
+  "out": "../dist/demo/navoro-pack.json",
+  "supportEmail": "support@lumen.example"
+}
