@@ -1,6 +1,6 @@
 # Reference audit: farzaa/clicky
 
-Inspected on 2026-10-10 (shallow clone of https://github.com/farzaa/clicky, MIT). Files read: `README.md`, `AGENTS.md`/`CLAUDE.md` (architecture notes, key-file table), `worker/src/index.ts` (Cloudflare proxy), and the state/pointing portions of `leanring-buddy/CompanionManager.swift`, `OverlayWindow.swift`, `ElementLocationDetector.swift`. Clicky is a macOS menu-bar voice companion: push-to-talk → screenshot → Claude → TTS, with a cursor overlay that flies to `[POINT:x,y:label]` coordinates the model embeds in prose.
+Inspected on 2026-10-10 (shallow clone of https://github.com/farzaa/clicky, MIT). Files read: `README.md`, `AGENTS.md`/`CLAUDE.md` (architecture notes, key-file table, decisions), `worker/src/index.ts` (Cloudflare proxy), and the state and `[POINT:…]` prompt/parsing portions of `leanring-buddy/CompanionManager.swift`. `OverlayWindow.swift` and `ElementLocationDetector.swift` are known through the repository's own architecture notes, not inspected line by line. Clicky is a macOS menu-bar voice companion: push-to-talk → screenshot → Claude → TTS, with a cursor overlay that flies to `[POINT:x,y:label]` coordinates the model embeds in prose.
 
 ## What transferred to Navoro (as ideas, re-implemented for the web)
 
