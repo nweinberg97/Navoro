@@ -12,7 +12,7 @@ import type { ServerResponse } from 'node:http';
 import { HttpError, readJson, sendJson, type RequestContext, type Router } from '../http/http.ts';
 import { v } from '../lib/validate.ts';
 import type { ServerContext } from './context.ts';
-import { findApplicationByPublicKey, isOriginRegisteredAnywhere } from '../data/applications.ts';
+import { ENVIRONMENTS, findApplicationByPublicKey, isOriginRegisteredAnywhere } from '../data/applications.ts';
 import { tenant, type Tenant } from '../data/tenant.ts';
 import { isOriginAllowed, normalizeOrigin } from '../security/origins.ts';
 import { signSdkToken, verifySdkToken, type SdkTokenClaims } from '../security/crypto.ts';
@@ -154,7 +154,14 @@ export function registerSdkRoutes(router: Router, server: ServerContext): void {
     }
     const normalized = normalizeOrigin(origin) as string;
     const { version, snapshot } = activeSnapshot(t, app, body.environment);
-    if (version > 0 && !snapshot.privacy.environments.includes(body.environment)) {
+    // The privacy policy's environment list is application-wide, but publishing to an environment the
+    // policy excludes is refused — so the newest published policy (any environment) must also be honoured,
+    // otherwise disabling production and publishing to development would leave production running.
+    const newest = ENVIRONMENTS.map((name) => t.apps.activeSnapshot(app.id, name))
+      .filter((entry) => entry !== null)
+      .sort((a, b) => b.version - a.version)[0];
+    const disabledByNewest = newest !== undefined && !newest.snapshot.privacy.environments.includes(body.environment);
+    if ((version > 0 && !snapshot.privacy.environments.includes(body.environment)) || disabledByNewest) {
       throw new HttpError(403, 'environment_disabled', `Navoro is disabled for ${body.environment} by the workspace privacy policy.`);
     }
     const expiresAtSeconds = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;

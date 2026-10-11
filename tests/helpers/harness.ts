@@ -112,7 +112,7 @@ export class SdkClient {
       headers: { 'content-type': 'application/json', origin: this.origin },
       body: JSON.stringify({ publicKey, environment, sdkVersion: '0.1.0' }),
     });
-    const body = await response.json().catch(() => null);
+    const body = (await response.json().catch(() => null)) as any;
     if (response.ok) this.token = body.sessionToken;
     return { status: response.status, body, headers: response.headers };
   }

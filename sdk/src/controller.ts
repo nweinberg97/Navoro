@@ -381,19 +381,30 @@ export class NavoroController {
   #awaitTarget(key: string, index: number, step: GuidanceStep, resolve: () => Element | null): void {
     if (!step.target) return;
     const started = Date.now();
+    let reported = false;
+    const reportMissing = () => {
+      if (reported) return;
+      reported = true;
+      this.#track('step_target_missing', index, step);
+    };
     const interval = setInterval(() => {
       if (key !== this.#shownStepKey) return clearInterval(interval);
       const element = resolve();
       if (element) {
         clearInterval(interval);
+        reported = true; // found in time: nothing to report
         this.#overlay?.relocate();
         this.#follow(key, element);
       } else if (Date.now() - started > 2500) {
         clearInterval(interval);
-        this.#track('step_target_missing', index, step);
+        reportMissing();
       }
     }, 150);
-    this.#followCleanup = () => clearInterval(interval);
+    // Leaving the step (next/back/dismiss/complete) before the target appeared still counts as missing.
+    this.#followCleanup = () => {
+      clearInterval(interval);
+      reportMissing();
+    };
   }
 
   #stopFollowing(): void {

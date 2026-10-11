@@ -7,3 +7,5 @@ dist/
 *.log
 test-results/
 .DS_Store
+release/
+pages/

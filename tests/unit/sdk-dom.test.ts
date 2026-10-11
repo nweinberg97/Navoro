@@ -349,8 +349,8 @@ test('end-to-end: script-tag install, guidance stream, shadow overlay, safe rend
   })));
   assert.equal(await page.evaluate(() => (window as any).__clicked), 1);
 
+  // Follow-along: activating the highlighted control advances to the next step on its own.
   // Step 2 has no resolvable target → docked card with explanation.
-  await page.getByRole('button', { name: 'Next' }).click();
   await page.waitForFunction(() => /couldn’t find “Schedule”/.test(document.querySelector('navoro-root')!.shadowRoot!.querySelector('[data-navoro-card]')?.textContent ?? ''));
   assert.equal(await page.evaluate(() => document.querySelector('navoro-root')!.shadowRoot!.querySelector('[data-navoro-spotlight]')), null);
   await page.getByRole('button', { name: 'Done' }).click();

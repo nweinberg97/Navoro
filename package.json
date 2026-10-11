@@ -10,7 +10,9 @@
   },
   "scripts": {
     "build": "node scripts/build.ts",
+    "build:pages": "node scripts/build-pages.ts",
     "start": "node --disable-warning=ExperimentalWarning server/main.ts",
+    "launch": "node start.mjs",
     "dev": "node scripts/build.ts && node --disable-warning=ExperimentalWarning server/main.ts",
     "db:migrate": "node --disable-warning=ExperimentalWarning scripts/migrate.ts",
     "db:seed": "node --disable-warning=ExperimentalWarning scripts/seed.ts",
@@ -21,7 +23,8 @@
     "test:unit": "node --disable-warning=ExperimentalWarning --test --test-reporter=spec \"tests/unit/**/*.test.ts\"",
     "test:integration": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 --test-reporter=spec \"tests/integration/**/*.test.ts\"",
     "test:e2e": "node scripts/build.ts && node --disable-warning=ExperimentalWarning --test --test-concurrency=1 --test-reporter=spec \"tests/e2e/**/*.test.ts\"",
-    "check": "npm run typecheck && npm run lint && npm run build && npm test"
+    "check": "npm run typecheck && npm run lint && npm run build && npm test",
+    "release": "node scripts/build.ts --minify && node scripts/package-release.ts"
   },
   "dependencies": {
     "react": "19.2.8",

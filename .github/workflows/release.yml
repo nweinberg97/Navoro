@@ -1,0 +1,78 @@
+name: Release
+
+# Publishes a rolling "latest" GitHub Release whose asset is navoro.zip, so
+# https://github.com/<owner>/<repo>/releases/latest/download/navoro.zip
+# (the landing page's "Download Navoro" button) always serves the current main.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Package and publish navoro.zip
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build release package
+        run: npm run release
+
+      - name: Smoke-test the package without node_modules
+        run: |
+          workdir="$(mktemp -d)"
+          unzip -q release/navoro.zip -d "$workdir"
+          cd "$workdir/navoro"
+          NAVORO_NO_OPEN=1 PORT=4610 NAVORO_DEMO_PORT=4611 NAVORO_DATABASE_PATH="$workdir/smoke.db" node start.mjs > "$workdir/server.log" 2>&1 &
+          pid=$!
+          ok=""
+          for _ in $(seq 1 40); do
+            if curl -fsS http://localhost:4610/api/health > /dev/null 2>&1; then ok=1; break; fi
+            sleep 0.5
+          done
+          if [ -z "$ok" ]; then cat "$workdir/server.log"; kill "$pid" 2>/dev/null || true; exit 1; fi
+          curl -fsS -o /dev/null http://localhost:4610/
+          curl -fsS -o /dev/null http://localhost:4610/sdk/v1/navoro.js
+          curl -fsS -o /dev/null http://localhost:4611/
+          kill -INT "$pid"
+          wait "$pid" || true
+
+      - name: Publish rolling "latest" release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          notes="Rolling build of \`main\` at ${GITHUB_SHA} (${short_sha}).
+
+          Download **navoro.zip**, unzip it, and in the \`navoro\` folder run:
+
+          \`\`\`sh
+          node start.mjs
+          \`\`\`
+
+          Requires Node.js 22.18 or newer. No npm install, no database setup.
+          Opens http://localhost:4400 (dashboard, demo workspace) and http://localhost:4500 (Lumen demo app)."
+          gh release delete latest --cleanup-tag --yes || true
+          git push origin :refs/tags/latest || true
+          gh release create latest release/navoro.zip \
+            --title "Navoro (latest build, ${short_sha})" \
+            --notes "$notes" \
+            --target "$GITHUB_SHA" \
+            --latest

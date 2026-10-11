@@ -207,9 +207,11 @@ export class Overlay {
     const isLast = index >= total - 1;
     const missing = !element;
     const titleId = 'navoro-step-title';
+    // A server note without a target explains why the control was withheld (e.g. a broken
+    // mapping awaiting review); don't also claim the step has no control.
     const missingText = missing
       ? [
-          view.lookingFor ? `I couldn’t find “${view.lookingFor}” on this page.` : 'This step doesn’t point at a specific control.',
+          view.lookingFor ? `I couldn’t find “${view.lookingFor}” on this page.` : step.targetNote ? '' : 'This step doesn’t point at a specific control.',
           step.targetNote ?? '',
         ]
           .join(' ')

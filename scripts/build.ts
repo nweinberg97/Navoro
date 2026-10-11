@@ -48,6 +48,13 @@ const entries: Entry[] = [
       jsx: 'automatic',
       minify: production,
       loader: { '.svg': 'text' },
+      // Served by the Navoro server ('app' mode). scripts/build-pages.ts builds the 'static' GitHub Pages variant.
+      define: {
+        ...shared.define,
+        __NAVORO_SITE_MODE__: JSON.stringify('app'),
+        __NAVORO_DOWNLOAD_URL__: JSON.stringify('https://github.com/nweinberg97/Navoro/releases/latest/download/navoro.zip'),
+        __NAVORO_REPO_URL__: JSON.stringify('https://github.com/nweinberg97/Navoro'),
+      },
     },
   },
   {

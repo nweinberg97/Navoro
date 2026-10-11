@@ -1536,3 +1536,166 @@ main:focus {
     animation: s-fade 500ms 450ms var(--ease-out) both;
   }
 }
+
+/* ---- Run locally (download) -------------------------------------------- */
+
+.s-run {
+  background: var(--color-surface);
+  border-block: 1px solid var(--color-border);
+}
+.s-run :not(pre) > code {
+  font-size: 0.88em;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.s-run__facts {
+  margin-top: 24px;
+}
+.s-run__facts li {
+  font-size: var(--text-sm);
+  padding: 5px 12px;
+  color: var(--color-text);
+}
+.s-run__grid {
+  align-items: start;
+}
+.s-run__steps {
+  margin-top: 0;
+  gap: 30px;
+}
+.s-run__steps p {
+  max-width: 40ch;
+}
+.s-run__link {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--color-accent-strong);
+  text-underline-offset: 3px;
+}
+.s-run__link:hover {
+  text-decoration-color: var(--color-text);
+}
+.s-run__side {
+  display: grid;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* Terminal: reuses .s-code, with a copy button in the title bar. */
+.s-term__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px;
+}
+.s-term__bar > span::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  vertical-align: 1px;
+}
+.s-term pre {
+  font-size: 14px;
+}
+.s-copy {
+  min-height: 30px;
+  min-width: 64px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--n-ink-700);
+  background: transparent;
+  color: var(--color-text-inverse);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+.s-copy:hover {
+  border-color: var(--n-gray-500);
+}
+.s-copy[data-state='copied'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+.s-copy:focus-visible {
+  border-radius: var(--radius-full);
+  box-shadow:
+    0 0 0 2px var(--color-text-inverse),
+    0 0 0 5px var(--color-accent);
+}
+
+.s-run__get {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--color-text);
+  margin: 0;
+}
+.s-run__get > div {
+  padding: 20px 24px 22px 0;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+.s-run__get dt {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.s-run__get dt::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--color-text);
+  flex: none;
+}
+.s-run__get dd {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.s-run__note {
+  margin-top: 0;
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+}
+.s-run__lead {
+  display: grid;
+  gap: 44px;
+  align-content: start;
+}
+.s-run__ctas .s-btn {
+  min-height: 48px;
+  padding: 0 20px;
+  font-size: var(--text-base);
+}
+.s-run__get code {
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .s-run__get {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .s-run__get > div {
+    padding-right: 0;
+  }
+  .s-term pre {
+    font-size: 12.5px;
+  }
+}

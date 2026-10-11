@@ -1,8 +1,16 @@
 import { Logo } from './Brand.tsx';
+import { DOWNLOAD_URL, IS_STATIC, LOCAL_DEMO_URL, REPO_URL } from './config.ts';
 import { Demo } from './Demo.tsx';
 import { AssistIllo, OnboardingIllo, TroubleshootIllo } from './Illustrations.tsx';
+import { DownloadIcon, RunLocally } from './RunLocally.tsx';
 
-const DEMO_URL = 'http://localhost:4500/';
+/**
+ * Link targets for the two build modes (see config.ts). On the static landing page
+ * there is no server behind the site, so everything leads to the download section.
+ */
+const DEMO_URL = IS_STATIC ? '#download' : LOCAL_DEMO_URL;
+const SIGNUP_URL = IS_STATIC ? '#download' : '/signup';
+const LOGIN_URL = IS_STATIC ? '#download' : '/login';
 
 function Nav() {
   return (
@@ -16,12 +24,13 @@ function Nav() {
           <a href="#learning">How it learns</a>
           <a href="#privacy">Privacy</a>
           <a href="#install">Install</a>
+          {IS_STATIC ? <a href="#download">Download</a> : null}
         </nav>
         <div className="s-nav__actions">
-          <a href="/login" className="s-nav__signin">
+          <a href={LOGIN_URL} className="s-nav__signin">
             Sign in
           </a>
-          <a href="/signup" className="s-btn s-btn--ink s-btn--sm">
+          <a href={SIGNUP_URL} className="s-btn s-btn--ink s-btn--sm">
             Create a workspace
           </a>
         </div>
@@ -45,14 +54,26 @@ function Hero() {
           <p className="s-hero__sub">
             Navoro lives inside your product, answers your users’ questions, and points to the exact control they need.
           </p>
-          <div className="s-hero__ctas">
-            <a href={DEMO_URL} className="s-btn s-btn--lime">
-              Try the live demo
-            </a>
-            <a href="/signup" className="s-btn s-btn--line">
-              Create a workspace
-            </a>
-          </div>
+          {IS_STATIC ? (
+            <div className="s-hero__ctas">
+              <a href={DOWNLOAD_URL} className="s-btn s-btn--lime">
+                <DownloadIcon />
+                Download Navoro
+              </a>
+              <a href="#download" className="s-btn s-btn--line">
+                How to run it
+              </a>
+            </div>
+          ) : (
+            <div className="s-hero__ctas">
+              <a href={DEMO_URL} className="s-btn s-btn--lime">
+                Try the live demo
+              </a>
+              <a href={SIGNUP_URL} className="s-btn s-btn--line">
+                Create a workspace
+              </a>
+            </div>
+          )}
         </div>
       </div>
       <div className="s-wrap s-hero__demo" id="product">
@@ -348,15 +369,35 @@ function Closing() {
         <h2 className="s-close__title" id="close-title">
           See it find the button.
         </h2>
-        <p className="s-close__sub">Open the Lumen demo and ask it anything, or set up Navoro for your own product.</p>
-        <div className="s-hero__ctas">
-          <a href={DEMO_URL} className="s-btn s-btn--lime">
-            Explore the demo
-          </a>
-          <a href="/signup" className="s-btn s-btn--paper">
-            Create a workspace
-          </a>
-        </div>
+        {IS_STATIC ? (
+          <>
+            <p className="s-close__sub">
+              Download Navoro and run it with one command. The live Lumen demo runs on your machine, right next to the
+              dashboard.
+            </p>
+            <div className="s-hero__ctas">
+              <a href={DOWNLOAD_URL} className="s-btn s-btn--lime">
+                <DownloadIcon />
+                Download Navoro
+              </a>
+              <a href={DEMO_URL} className="s-btn s-btn--paper">
+                Try the live demo
+              </a>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="s-close__sub">Open the Lumen demo and ask it anything, or set up Navoro for your own product.</p>
+            <div className="s-hero__ctas">
+              <a href={DEMO_URL} className="s-btn s-btn--lime">
+                Explore the demo
+              </a>
+              <a href={SIGNUP_URL} className="s-btn s-btn--paper">
+                Create a workspace
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
@@ -370,7 +411,8 @@ function Footer() {
         <nav aria-label="Footer" className="s-foot__links">
           <a href="#privacy">Privacy</a>
           <a href="#install">Install</a>
-          <a href="/login">Sign in</a>
+          {IS_STATIC ? <a href="#download">Download</a> : <a href={LOGIN_URL}>Sign in</a>}
+          <a href={REPO_URL}>GitHub</a>
         </nav>
         <p className="s-foot__copy">© 2026 Navoro</p>
       </div>
@@ -392,6 +434,7 @@ export function Site() {
         <Learning />
         <Privacy />
         <Install />
+        <RunLocally />
         <Closing />
       </main>
       <Footer />

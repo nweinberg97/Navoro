@@ -35,7 +35,18 @@ export function isPrivateAddress(address: string): boolean {
   }
   const lower = address.toLowerCase();
   if (lower === '::' || lower === '::1') return true;
-  if (lower.startsWith('::ffff:')) return isPrivateAddress(lower.slice(7));
+  if (lower.startsWith('::ffff:')) {
+    const mapped = lower.slice(7);
+    if (net.isIPv4(mapped)) return isPrivateAddress(mapped);
+    // WHATWG URL serializes IPv4-mapped addresses in hex form (::ffff:7f00:1).
+    const hex = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(mapped);
+    if (hex?.[1] && hex[2]) {
+      const high = Number.parseInt(hex[1], 16);
+      const low = Number.parseInt(hex[2], 16);
+      return isPrivateAddress(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`);
+    }
+    return true;
+  }
   return lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80') || lower.startsWith('ff');
 }
 
@@ -75,6 +86,11 @@ export function validatePublicUrl(raw: string): URL {
 
 function request(url: URL, options: FetchOptions): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
   const client = url.protocol === 'https:' ? https : http;
+  // Node skips the `lookup` hook for IP-literal hosts, so check those here.
+  const literal = url.hostname.replace(/^\[|\]$/g, '');
+  if (!options.allowPrivate && net.isIP(literal) && isPrivateAddress(literal)) {
+    return Promise.reject(new FetchError('That address points to a private network, which Navoro will not fetch.'));
+  }
   return new Promise((resolve, reject) => {
     const req = client.request(
       url,

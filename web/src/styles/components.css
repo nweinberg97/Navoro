@@ -390,6 +390,8 @@
 }
 .n-overlay--sheet {
   place-items: stretch end;
+  /* One viewport-high row, so a long sheet scrolls its body instead of pushing the footer off-screen. */
+  grid-template-rows: minmax(0, 1fr);
   padding: 0;
 }
 @keyframes n-fade {

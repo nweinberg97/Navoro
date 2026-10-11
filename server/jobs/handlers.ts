@@ -30,12 +30,49 @@ function payload<T>(ctx: JobContext): T {
   return JSON.parse(ctx.job.payload) as T;
 }
 
+type Tenant = ReturnType<typeof tenant>;
+/** Workflow changes from re-processing that happened since the last Refresh Learning (kept in source metadata). */
+interface PendingRefresh {
+  added: string[];
+  updated: string[];
+  removed: string[];
+  needsReview: string[];
+}
+const PENDING_KEY = 'changedSinceRefresh';
+
+function pendingRefresh(source: SourceRow): PendingRefresh | null {
+  try {
+    const value = (JSON.parse(source.metadata) as Record<string, unknown>)[PENDING_KEY] as PendingRefresh | undefined;
+    return value && Array.isArray(value.updated) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberChangeForRefresh(t: Tenant, sourceId: string, outcome: { workflowsAdded: string[]; workflowsUpdated: string[]; workflowsRemoved: string[]; workflowsNeedingReview: string[] }): void {
+  const source = t.knowledge.get(sourceId);
+  if (!source) return;
+  const prev = pendingRefresh(source) ?? { added: [], updated: [], removed: [], needsReview: [] };
+  const merge = (a: string[], b: string[]) => [...new Set([...a, ...b])];
+  t.knowledge.mergeMetadata(sourceId, {
+    [PENDING_KEY]: {
+      added: merge(prev.added, outcome.workflowsAdded),
+      updated: merge(prev.updated, outcome.workflowsUpdated),
+      removed: merge(prev.removed, outcome.workflowsRemoved),
+      needsReview: merge(prev.needsReview, outcome.workflowsNeedingReview),
+    },
+  });
+}
+
 export function ingestHandler(db: Database, deps: IngestionDeps): JobHandler {
   return async (ctx) => {
     const t = tenant(db, ctx.job.org_id);
     const { sourceId } = payload<{ sourceId: string }>(ctx);
     await ctx.step('process', async (setDetail) => {
+      const before = t.knowledge.get(sourceId);
       const outcome = await processSource(t, sourceId, deps, { refetch: false });
+      // An edit re-processed outside Refresh Learning must still show up in the next refresh report.
+      if (before?.processed_at && outcome.contentChanged && outcome.status !== 'failed') rememberChangeForRefresh(t, sourceId, outcome);
       const parts = [
         `${outcome.workflowsAdded.length} workflow(s) added`,
         `${outcome.workflowsUpdated.length} updated`,
@@ -101,7 +138,8 @@ export function refreshHandler(db: Database, deps: IngestionDeps): JobHandler {
         }
         const current = t.knowledge.get(source.id);
         if (!current) continue;
-        const needs = current.content_hash !== current.processed_hash || current.status === 'failed' || current.status === 'pending' || current.processed_at === null;
+        const needs =
+          current.content_hash !== current.processed_hash || current.status === 'failed' || current.status === 'pending' || current.processed_at === null || pendingRefresh(current) !== null;
         if (needs) changed.push(current);
       }
       report.sourcesChanged = changed.length;
@@ -119,11 +157,16 @@ export function refreshHandler(db: Database, deps: IngestionDeps): JobHandler {
       for (const source of toProcess) {
         ctx.checkCancelled();
         setDetail(`Processing ${source.title} (${done + 1}/${toProcess.length})`);
+        const pending = pendingRefresh(source);
         const outcome = await processSource(t, source.id, deps, { refetch: false });
-        report.workflowsAdded.push(...outcome.workflowsAdded);
-        report.workflowsUpdated.push(...outcome.workflowsUpdated);
-        report.workflowsRemoved.push(...outcome.workflowsRemoved);
-        report.workflowsNeedingReview.push(...outcome.workflowsNeedingReview);
+        const add = (list: string[], titles: string[]) => {
+          for (const title of titles) if (!list.includes(title)) list.push(title);
+        };
+        add(report.workflowsAdded, [...(pending?.added ?? []), ...outcome.workflowsAdded]);
+        add(report.workflowsUpdated, [...(pending?.updated ?? []), ...outcome.workflowsUpdated]);
+        add(report.workflowsRemoved, [...(pending?.removed ?? []), ...outcome.workflowsRemoved]);
+        add(report.workflowsNeedingReview, [...(pending?.needsReview ?? []), ...outcome.workflowsNeedingReview]);
+        if (pending) t.knowledge.mergeMetadata(source.id, { [PENDING_KEY]: undefined });
         if (outcome.status === 'failed') report.sourcesFailed.push({ id: source.id, title: source.title, error: outcome.error ?? 'Failed' });
         done += 1;
       }

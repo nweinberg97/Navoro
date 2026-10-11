@@ -111,6 +111,17 @@ export function revalidateMapping(mapping: MappingRow, catalog: CatalogRow[]): R
       };
     }
     if (element.approved !== 1) {
+      if (mapping.provenance !== 'admin') {
+        // Extracted identifiers are only ever resolved from approved metadata, so this one was revoked:
+        // the allowlist-first SDK may no longer target it.
+        return {
+          strategies,
+          provenance: mapping.provenance,
+          confidence: 0.1,
+          validation: 'broken',
+          detail: `data-navoro-id "${element.navoro_id}" is no longer approved application metadata. Re-approve it or correct the mapping.`,
+        };
+      }
       return { strategies, provenance: mapping.provenance, confidence: 0.5, validation: 'uncertain', detail: `${element.navoro_id} exists but is not approved metadata yet.` };
     }
     const ageDays = (Date.now() - new Date(element.last_seen_at).getTime()) / 86_400_000;

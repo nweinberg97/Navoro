@@ -57,12 +57,16 @@ export function htmlToText(html: string): { text: string; title: string | null }
     .replace(/<(br|hr)\s*\/?>/gi, '\n')
     .replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_m, level: string, inner: string) => `\n\n${'#'.repeat(Number(level))} ${inner.replace(/<[^>]+>/g, '').trim()}\n\n`)
     .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m, _tag: string, inner: string) => `**${inner.replace(/<[^>]+>/g, '').trim()}**`)
+    // Ordered lists become "1. 2. …" so the extractor recognizes them as workflow steps.
+    .replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_m, inner: string) => {
+      let index = 0;
+      return `\n${inner.replace(/<li\b[^>]*>/gi, () => `\n${(index += 1)}. `)}\n`;
+    })
     .replace(/<li\b[^>]*>/gi, '\n- ')
     .replace(/<\/(p|div|section|ul|ol|li|table|tr|h[1-6]|blockquote|pre)>/gi, '\n')
     .replace(/<(p|div|section|ul|ol|table|tr|blockquote|pre)\b[^>]*>/gi, '\n')
     .replace(/<\/?(td|th)\b[^>]*>/gi, ' ')
     .replace(/<[^>]+>/g, '');
-  // Re-number list items inside "ordered" lists heuristically: keep "- " bullets; the extractor accepts both.
   return { text: normalizeText(decodeEntities(body)), title };
 }
 
