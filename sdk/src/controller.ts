@@ -66,6 +66,7 @@ export class NavoroController {
   #lastPayload: SanitizedContext | null = null;
   #feedbackGiven = false;
   #shownStepKey = '';
+  #followCleanup: (() => void) | null = null;
   #destroyed = false;
   readonly #stateListeners: ReadonlySet<StateListener>;
   readonly #onKeyDown = (ev: KeyboardEvent) => this.#handleKey(ev);
@@ -181,6 +182,7 @@ export class NavoroController {
     this.#destroyed = true;
     this.#abort?.abort();
     this.#abort = null;
+    this.#stopFollowing();
     this.#events?.flush(true);
     this.#events?.dispose();
     this.#discovery?.dispose();
@@ -299,6 +301,7 @@ export class NavoroController {
     if (!overlay || !panel) return;
     const result = state.result;
     if (state.status !== 'showing_guidance' || state.stepIndex === null || !result) {
+      this.#stopFollowing();
       if (overlay.active) {
         const cardHadFocus = this.#root?.shadow.activeElement && overlay.card?.contains(this.#root.shadow.activeElement);
         overlay.hide();
@@ -313,6 +316,7 @@ export class NavoroController {
     const key = `${state.requestId}:${state.stepIndex}`;
     if (key === this.#shownStepKey) return;
     this.#shownStepKey = key;
+    this.#stopFollowing();
     const index = state.stepIndex;
     const step = result.steps[index];
     if (!step) return;
@@ -340,7 +344,61 @@ export class NavoroController {
       panelHadFocus || undefined,
     );
     this.#track('step_viewed', index, step);
-    if (!element) this.#track('step_target_missing', index, step);
+    if (element) this.#follow(key, element);
+    else this.#awaitTarget(key, index, step, resolve);
+  }
+
+  #advanceFrom(key: string): void {
+    if (key !== this.#shownStepKey) return;
+    const cur = this.#m.state;
+    if (!cur.result || cur.stepIndex === null) return;
+    if (cur.stepIndex >= cur.result.steps.length - 1) this.#m.send({ type: 'COMPLETE' });
+    else this.#m.send({ type: 'NEXT_STEP' });
+  }
+
+  /**
+   * Follow-along: while a step is highlighted, passively notice when the user
+   * activates that exact control (click for buttons/links, change for fields)
+   * and move to the next step. Navoro never reads values and never acts itself;
+   * listeners are scoped to the one highlighted element and removed on step change.
+   */
+  #follow(key: string, element: Element): void {
+    const isField = element.matches('input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]), select, textarea, fieldset, [role=radiogroup], [role=combobox], [role=textbox]');
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const advance = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => this.#advanceFrom(key), isField ? 150 : 60);
+    };
+    const type = isField ? 'change' : 'click';
+    element.addEventListener(type, advance, { passive: true });
+    this.#followCleanup = () => {
+      element.removeEventListener(type, advance);
+      if (timer) clearTimeout(timer);
+    };
+  }
+
+  /** The target may appear shortly after navigation; wait briefly before reporting it missing. */
+  #awaitTarget(key: string, index: number, step: GuidanceStep, resolve: () => Element | null): void {
+    if (!step.target) return;
+    const started = Date.now();
+    const interval = setInterval(() => {
+      if (key !== this.#shownStepKey) return clearInterval(interval);
+      const element = resolve();
+      if (element) {
+        clearInterval(interval);
+        this.#overlay?.relocate();
+        this.#follow(key, element);
+      } else if (Date.now() - started > 2500) {
+        clearInterval(interval);
+        this.#track('step_target_missing', index, step);
+      }
+    }, 150);
+    this.#followCleanup = () => clearInterval(interval);
+  }
+
+  #stopFollowing(): void {
+    this.#followCleanup?.();
+    this.#followCleanup = null;
   }
 
   #dismissSteps(): void {

@@ -145,6 +145,16 @@ export class Overlay {
     if (focusCard) this.#focusPrimary();
   }
 
+  /** Re-resolves the current step's target (e.g. after navigation) and re-attaches if found. */
+  relocate(): boolean {
+    const view = this.#view;
+    if (!view) return false;
+    const element = view.relocate();
+    if (!element) return false;
+    this.show({ ...view, element }, false);
+    return true;
+  }
+
   /** Removes ring, card and every listener/observer. */
   hide(): void {
     this.#teardownTracking();

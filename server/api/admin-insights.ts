@@ -16,7 +16,7 @@ export function providerStatus(server: ServerContext): ProviderStatusDTO {
     mode: 'demo',
     provider: null,
     model: null,
-    note: 'Demo mode: ANTHROPIC_API_KEY is not set, so answers are assembled directly from your retrieved documentation without a language model. Every answer is labelled accordingly.',
+    note: 'ANTHROPIC_API_KEY is not set, so answers are assembled directly from your retrieved documentation without a language model. Every answer is labelled accordingly.',
   };
 }
 

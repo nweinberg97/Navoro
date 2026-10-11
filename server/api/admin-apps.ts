@@ -78,10 +78,9 @@ function detail(server: ServerContext, t: Tenant, app: ApplicationRow): Applicat
 export function privacyDTO(t: Tenant, appId: string): PrivacyPolicyDTO {
   const draft = t.privacy.draft(appId);
   if (!draft) throw notFound('Application not found.');
-  const unpublishedChanges = ENVIRONMENTS.some((env) => {
-    const active = t.apps.activeSnapshot(appId, env);
-    return !active || JSON.stringify(active.snapshot.privacy) !== JSON.stringify(draft.policy);
-  });
+  const published = ENVIRONMENTS.map((env) => t.apps.activeSnapshot(appId, env)).filter((entry) => entry !== null);
+  // Unpublished when nothing is live yet, or when any live environment runs a different policy than the draft.
+  const unpublishedChanges = published.length === 0 || published.some((entry) => JSON.stringify(entry.snapshot.privacy) !== JSON.stringify(draft.policy));
   return { ...draft.policy, updatedAt: draft.updatedAt, builtInExclusions: BUILT_IN_EXCLUSIONS, unpublishedChanges };
 }
 

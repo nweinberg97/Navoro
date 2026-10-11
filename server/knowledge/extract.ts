@@ -232,7 +232,9 @@ export function extractKnowledge(text: string): ExtractionResult {
       workflows.push({
         key,
         title,
-        summary: summaryParagraph ? stripMarkdown(summaryParagraph).slice(0, 400) : `${steps.length} steps.`,
+        summary: summaryParagraph
+          ? stripMarkdown(summaryParagraph).slice(0, 400)
+          : `${steps.length} steps, from “${steps[0]?.title ?? ''}” to “${steps[steps.length - 1]?.title ?? ''}”.`,
         kind: workflowKind(title),
         prerequisites: prerequisitesOf(section.lines),
         steps,
