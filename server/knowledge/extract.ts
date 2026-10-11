@@ -140,7 +140,7 @@ function prerequisitesOf(lines: string[]): string[] {
     .replace(/^\s*[^:]+:\s*/, '')
     .split(/(?<=\.)\s+|;\s*/)
     .map((part) => stripMarkdown(part).replace(/\.$/, '').trim())
-    .filter(Boolean)
+    .filter((part) => part && !/^(none|nothing|n\/a)$/i.test(part))
     .slice(0, 6);
 }
 
@@ -149,7 +149,9 @@ export function stepTitle(rawText: string): string {
   const firstBold = /\*\*(.+?)\*\*/.exec(rawText);
   let title: string;
   if (firstBold && firstBold.index < 80) {
-    title = stripMarkdown(rawText.slice(0, firstBold.index + firstBold[0].length));
+    // Keep a trailing noun that completes the phrase: "Click the **Reminders** tab".
+    const after = /^\s+(tab|button|bin|menu|panel|link|field|column|icon|toggle|switch)\b/.exec(rawText.slice(firstBold.index + firstBold[0].length));
+    title = stripMarkdown(rawText.slice(0, firstBold.index + firstBold[0].length + (after ? after[0].length : 0)));
   } else {
     title = stripMarkdown(rawText).split(/(?<=[.!?])\s|,\s/)[0] ?? stripMarkdown(rawText);
   }
