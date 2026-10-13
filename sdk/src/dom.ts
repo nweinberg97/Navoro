@@ -81,7 +81,11 @@ export function isNavoroUi(el: Element): boolean {
   return el.closest(`[${HOST_ATTR}]`) !== null || el.getRootNode() instanceof ShadowRoot;
 }
 
-/** Rendered, non-zero size, not hidden by CSS, aria-hidden, or a closed <details>. */
+/**
+ * Rendered, non-zero size, not hidden by CSS, aria-hidden, or a closed <details>.
+ * Faded-out containers (opacity ≈ 0, a common way to hide menus that animate open)
+ * count as hidden, so a walkthrough never points at, or starts from, an invisible control.
+ */
 export function isVisible(el: Element): boolean {
   const rect = el.getBoundingClientRect();
   if (!el.isConnected || rect.width <= 0 || rect.height <= 0) return false;
@@ -90,6 +94,7 @@ export function isVisible(el: Element): boolean {
   for (let node: Element | null = el; node; node = node.parentElement) {
     const style = view.getComputedStyle(node);
     if (style.display === 'none' || style.contentVisibility === 'hidden') return false;
+    if (Number.parseFloat(style.opacity) < 0.05) return false;
     if (node === el && (style.visibility === 'hidden' || style.visibility === 'collapse')) return false;
     if (node.getAttribute('aria-hidden') === 'true') return false;
     if (node.hasAttribute('hidden')) return false;

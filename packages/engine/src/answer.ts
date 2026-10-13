@@ -49,7 +49,7 @@ const DEFINITION = /\b(what\s+(is|are|does|do)|what'?s|mean(s|ing)?|define|defin
  * changes, or reports something broken that the docs don't cover. These go straight
  * to support instead of a guessed answer.
  */
-const HANDOFF = /\b((talk|speak|chat)\s+(to|with)\s+(a\s+|an\s+|your\s+)?(human|person|someone|agent|support|rep(resentative)?)|contact\s+(support|you|someone|a\s+human)|customer\s+(service|support)|real\s+person|refund|charged|overcharged|invoice\s+is\s+wrong|billing\s+(issue|problem)|cancel\s+my\s+(account|subscription|plan)|delete\s+my\s+account|bug|crash(ed|es|ing)?|data\s+(is\s+)?(gone|lost|missing)|still\s+(broken|not\s+working|doesn'?t\s+work)|(didn'?t|doesn'?t|did\s+not)\s+help)\b/i;
+const HANDOFF = /\b((talk|speak|chat)\s+(to|with)\s+(a\s+|an\s+|your\s+)?(human|person|someone|agent|support|rep(resentative)?)|contact\s+(support|you|someone|a\s+human)|customer\s+(service|support)|real\s+person|refund|charged|overcharged|invoice\s+is\s+wrong|billing\s+(issue|problem)|cancel\s+my\s+(account|subscription|plan)|delete\s+my\s+account|bug|crash(ed|es|ing)?|data\s+(is\s+)?(gone|lost|missing)|lost\s+(my\s+|all\s+(my\s+)?)?(data|work|everything|cards?|notes?|files?)|still\s+(broken|not\s+working|doesn'?t\s+work)|(didn'?t|doesn'?t|did\s+not)\s+help)\b/i;
 
 /** Contact action for unsolved problems: a pre-filled email the user reviews and sends themselves. */
 export function contactFallback(pack: Pick<KnowledgePack, 'application' | 'supportEmail' | 'supportUrl'>, question: string, context: SanitizedContext): GuidanceResult['fallback'] {

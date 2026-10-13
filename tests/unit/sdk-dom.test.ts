@@ -257,6 +257,17 @@ test('resolver: navoro id, aria label, text, ambiguity and visibility rules', as
       hidden: describe(resolveTarget(t([{ type: 'navoro_id', value: 'hidden.btn' }]))),
       closedDetails: describe(resolveTarget(t([{ type: 'navoro_id', value: 'details.btn' }]))),
       cssHidden: describe(resolveTarget(t([{ type: 'text', value: 'Hidden heading' }]))),
+      faded: (() => {
+        const menu = document.createElement('div');
+        menu.style.opacity = '0';
+        menu.innerHTML = '<button data-navoro-id="menu.faded">Timely</button>';
+        document.body.append(menu);
+        const before = describe(resolveTarget(t([{ type: 'navoro_id', value: 'menu.faded' }]))).reason;
+        menu.style.opacity = '1';
+        const after = describe(resolveTarget(t([{ type: 'navoro_id', value: 'menu.faded' }]))).reason;
+        menu.remove();
+        return { before, after };
+      })(),
       none: describe(resolveTarget(null)),
       aria: describe(resolveTarget(t([{ type: 'aria_label', value: 'Archive' }]))),
     };
@@ -271,6 +282,7 @@ test('resolver: navoro id, aria label, text, ambiguity and visibility rules', as
   assert.equal(r.hidden.reason, 'hidden');
   assert.equal(r.closedDetails.reason, 'hidden');
   assert.equal(r.cssHidden.id, null);
+  assert.deepEqual(r.faded, { before: 'hidden', after: 'found' }, 'a faded-out menu is not a visible target');
   assert.equal(r.none.reason, 'no_strategies');
   assert.equal(r.aria.reason, 'found');
   await page.context().close();

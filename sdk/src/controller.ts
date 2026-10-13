@@ -509,7 +509,7 @@ export class NavoroController {
         this.#overlay?.relocate();
         this.#follow(key, element);
       } else if (Date.now() - started > 2500) {
-        clearInterval(interval);
+        // Keep looking (the user may open the menu later); just record that it was slow to appear.
         reportMissing();
       }
     }, 150);

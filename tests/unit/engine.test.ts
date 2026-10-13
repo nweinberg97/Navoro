@@ -45,7 +45,7 @@ test('an error on screen does not hijack unrelated questions', () => {
 });
 
 test('problems a guide cannot solve hand off to support with a pre-filled email', () => {
-  for (const q of ['I want to talk to a human', 'I was charged twice, I need a refund', 'the app crashed and my data is gone', 'that didn\'t help']) {
+  for (const q of ['I want to talk to a human', 'I was charged twice, I need a refund', 'the app crashed and my data is gone', 'my sync broke and I lost my data', 'that didn\'t help']) {
     const r = ask(q, { route: '/#/settings' });
     assert.equal(r.kind, 'unresolved', q);
     assert.match(r.answer, /support team/);
