@@ -1,6 +1,6 @@
 import './styles.css';
 import { h, icon } from './ui.ts';
-import { installNavoro, resetConfig, resolveConfig, saveKey } from './navoro-install.ts';
+import { installNavoro, resetConfig, resolveConfig, saveKey, wireHelpButton } from './navoro-install.ts';
 import { dashboardView } from './views/dashboard.ts';
 import { reportsView } from './views/reports.ts';
 import { newReportView } from './views/new-report.ts';
@@ -88,8 +88,11 @@ document.addEventListener('click', (e) => {
   if (!popover.hidden && !popover.contains(t) && !demoBtn.contains(t)) togglePop(false);
 });
 
+const helpBtn = h('button', { type: 'button', class: 'icon-btn help-btn', 'aria-label': 'Help', 'aria-expanded': 'false', title: 'Help' }, icon('help', 20)) as HTMLButtonElement;
+wireHelpButton(helpBtn, config);
+
 const crumb = h('span', { class: 'crumb' });
-const topbar = h('header', { class: 'topbar' }, menuBtn, crumb, h('div', { class: 'topbar-end' }, h('div', { class: 'pop-wrap' }, demoBtn, popover), h('span', { class: 'avatar avatar-me', role: 'img', 'aria-label': 'Signed in as Jordan Avery (synthetic)' }, 'JA')));
+const topbar = h('header', { class: 'topbar' }, menuBtn, crumb, h('div', { class: 'topbar-end' }, helpBtn, h('div', { class: 'pop-wrap' }, demoBtn, popover), h('span', { class: 'avatar avatar-me', role: 'img', 'aria-label': 'Signed in as Jordan Avery (synthetic)' }, 'JA')));
 
 const banner = h('div', { class: 'banner', role: 'status', hidden: true }, h('span', {}, config.mode === 'local' ? 'Navoro couldn’t be loaded from this site (navoro/navoro.js).' : `Navoro SDK couldn't be loaded from ${config.origin} — is the Navoro server running?`), h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Dismiss', onclick: () => { banner.hidden = true; } }, icon('close', 16)));
 const outlet = h('main', { class: 'main', id: 'main' });

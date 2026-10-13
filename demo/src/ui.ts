@@ -50,6 +50,7 @@ export function s(tag: string, attrs: Attrs = {}, ...children: Array<Child | Chi
 }
 
 const ICONS: Record<string, string[]> = {
+  help: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M9.6 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.3-2.4 3.6', 'M12 17h.01'],
   dashboard: ['M3 3h7v9H3z', 'M14 3h7v5h-7z', 'M14 12h7v9h-7z', 'M3 16h7v5H3z'],
   reports: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M22 20H2'],
   integrations: ['M9 2v6', 'M15 2v6', 'M6 8h12v4a6 6 0 0 1-12 0z', 'M12 18v4'],
