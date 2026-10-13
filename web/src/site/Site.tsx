@@ -8,7 +8,7 @@ import { DownloadIcon, RunLocally } from './RunLocally.tsx';
  * Link targets for the two build modes (see config.ts). On the static landing page
  * there is no server behind the site, so everything leads to the download section.
  */
-const DEMO_URL = IS_STATIC ? '#download' : LOCAL_DEMO_URL;
+const DEMO_URL = IS_STATIC ? 'demo/' : LOCAL_DEMO_URL;
 const SIGNUP_URL = IS_STATIC ? '#download' : '/signup';
 const LOGIN_URL = IS_STATIC ? '#download' : '/login';
 
@@ -56,12 +56,12 @@ function Hero() {
           </p>
           {IS_STATIC ? (
             <div className="s-hero__ctas">
-              <a href={DOWNLOAD_URL} className="s-btn s-btn--lime">
+              <a href={DEMO_URL} className="s-btn s-btn--lime">
+                Try the live demo
+              </a>
+              <a href={DOWNLOAD_URL} className="s-btn s-btn--line">
                 <DownloadIcon />
                 Download Navoro
-              </a>
-              <a href="#download" className="s-btn s-btn--line">
-                How to run it
               </a>
             </div>
           ) : (
@@ -371,8 +371,8 @@ function Closing() {
         {IS_STATIC ? (
           <>
             <p className="s-close__sub">
-              Download Navoro and run it with one command. The live Lumen demo runs on your machine, right next to the
-              dashboard.
+              Try Navoro inside a sample app right in your browser — nothing is sent anywhere. Or download it and run the
+              whole thing, dashboard included, with one command.
             </p>
             <div className="s-hero__ctas">
               <a href={DOWNLOAD_URL} className="s-btn s-btn--lime">

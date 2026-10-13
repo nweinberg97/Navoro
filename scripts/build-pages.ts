@@ -4,6 +4,8 @@
  *   pages/index.html, 404.html   HTML shell (relative asset paths: works under /Navoro/)
  *   pages/site.js, site.css      the public site in 'static' mode
  *   pages/brand/navoro-mark.svg  favicon
+ *   pages/demo/                  the Lumen demo app running Navoro in local mode:
+ *                                demo app + SDK + knowledge pack, all static, no server
  *   pages/.nojekyll
  *
  * In static mode every CTA leads to the downloadable release zip and the
@@ -13,7 +15,7 @@
  * Env overrides: NAVORO_REPO_URL, NAVORO_DOWNLOAD_URL, NAVORO_PAGES_URL.
  */
 import { build } from 'esbuild';
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,6 +51,35 @@ await build({
 });
 
 copyFileSync(path.join(root, 'web/public/navoro-mark.svg'), path.join(out, 'brand/navoro-mark.svg'));
+
+// ── Live demo: Lumen + Navoro in local mode ─────────────────────────────────
+// Everything Navoro needs is static, so the full end-user experience runs on Pages.
+{
+  const demoOut = path.join(out, 'demo');
+  mkdirSync(path.join(demoOut, 'assets'), { recursive: true });
+  mkdirSync(path.join(demoOut, 'navoro'), { recursive: true });
+  await build({
+    entryPoints: { demo: path.join(root, 'demo/src/main.ts') },
+    outdir: path.join(demoOut, 'assets'),
+    bundle: true,
+    format: 'esm',
+    minify: true,
+    sourcemap: false,
+    legalComments: 'none',
+    logLevel: 'warning',
+    target: ['es2022', 'chrome110', 'firefox115', 'safari16'],
+    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  });
+  const { buildSdk } = await import('../sdk/scripts/build-sdk.ts');
+  await buildSdk(path.join(demoOut, 'navoro', 'navoro.js'));
+  rmSync(path.join(demoOut, 'navoro', 'navoro.js.map'), { force: true });
+  const { buildPack, parsePackConfig } = await import('../server/knowledge/pack-builder.ts');
+  const configPath = path.join(root, 'demo', 'navoro.config.json');
+  const { pack } = await buildPack(parsePackConfig(JSON.parse(readFileSync(configPath, 'utf8'))), path.dirname(configPath));
+  writeFileSync(path.join(demoOut, 'navoro', 'navoro-pack.json'), JSON.stringify(pack));
+  copyFileSync(path.join(root, 'demo/index.html'), path.join(demoOut, 'index.html'));
+  console.log(`[pages] live demo → demo/ (local mode, ${pack.workflows.length} workflows)`);
+}
 
 const title = 'Navoro: less searching, more doing';
 const description =

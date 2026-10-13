@@ -16,7 +16,10 @@ export interface NavoroConfig {
   env: string;
 }
 
-const DEFAULTS: NavoroConfig = { mode: 'hosted', origin: 'http://localhost:4400', key: 'nav_pk_demo_lumen_dev', env: 'development' };
+// Hosted mode needs a Navoro server on this machine; anywhere else (e.g. the public
+// demo on GitHub Pages) the app defaults to local mode, which needs no server at all.
+const IS_LOCALHOST = ['localhost', '127.0.0.1'].includes(location.hostname);
+const DEFAULTS: NavoroConfig = { mode: IS_LOCALHOST ? 'hosted' : 'local', origin: 'http://localhost:4400', key: 'nav_pk_demo_lumen_dev', env: 'development' };
 const LS = { mode: 'lumen-demo.navoroMode', origin: 'lumen-demo.navoroOrigin', key: 'lumen-demo.navoroKey', env: 'lumen-demo.navoroEnv' } as const;
 
 function read(key: string): string | null {
@@ -75,7 +78,8 @@ export function resetConfig(): void {
 export function installNavoro(config: NavoroConfig, onError: () => void): void {
   if (config.mode === 'local') {
     // Local mode: both files are served by this site. This is the whole install.
-    const local = h('script', { src: '/navoro/navoro.js', 'data-navoro-pack': '/navoro/navoro-pack.json', defer: true });
+    // Relative paths, so the same build works at / and under a sub-path like /Navoro/demo/.
+    const local = h('script', { src: 'navoro/navoro.js', 'data-navoro-pack': 'navoro/navoro-pack.json', defer: true });
     local.addEventListener('error', onError);
     document.head.append(local);
     return;

@@ -91,7 +91,7 @@ document.addEventListener('click', (e) => {
 const crumb = h('span', { class: 'crumb' });
 const topbar = h('header', { class: 'topbar' }, menuBtn, crumb, h('div', { class: 'topbar-end' }, h('div', { class: 'pop-wrap' }, demoBtn, popover), h('span', { class: 'avatar avatar-me', role: 'img', 'aria-label': 'Signed in as Jordan Avery (synthetic)' }, 'JA')));
 
-const banner = h('div', { class: 'banner', role: 'status', hidden: true }, h('span', {}, config.mode === 'local' ? 'Navoro couldn’t be loaded from this site (/navoro/navoro.js).' : `Navoro SDK couldn't be loaded from ${config.origin} — is the Navoro server running?`), h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Dismiss', onclick: () => { banner.hidden = true; } }, icon('close', 16)));
+const banner = h('div', { class: 'banner', role: 'status', hidden: true }, h('span', {}, config.mode === 'local' ? 'Navoro couldn’t be loaded from this site (navoro/navoro.js).' : `Navoro SDK couldn't be loaded from ${config.origin} — is the Navoro server running?`), h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Dismiss', onclick: () => { banner.hidden = true; } }, icon('close', 16)));
 const outlet = h('main', { class: 'main', id: 'main' });
 const root = document.getElementById('app');
 root?.append(h('a', { href: '#main', class: 'skip', onclick: (e: Event) => { e.preventDefault(); outlet.querySelector<HTMLElement>('h1')?.focus(); } }, 'Skip to content'), sidebar, scrim, h('div', { class: 'content' }, banner, topbar, outlet));
