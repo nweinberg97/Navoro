@@ -52,24 +52,35 @@ export class HelpButtons {
   #observer: MutationObserver | null = null;
   #scheduled = false;
   #open = false;
+  #active: boolean;
+  readonly #onAppear: () => void;
 
-  constructor(toggle: Toggle, opts: HelpButtonOptions | null, accent: string | null) {
+  /**
+   * `onAppear` fires once if a trigger or the placed button only shows up after Navoro
+   * mounted (apps that build their header asynchronously).
+   */
+  constructor(toggle: Toggle, opts: HelpButtonOptions | null, accent: string | null, onAppear: () => void = () => undefined) {
     this.#toggle = toggle;
     this.#opts = opts;
     this.#accent = accent;
+    this.#onAppear = onAppear;
     document.addEventListener('click', this.#onTrigger, true);
     for (const el of document.querySelectorAll<HTMLElement>('[data-navoro-trigger]')) this.#prepareTrigger(el);
-    if (opts) {
-      this.#place();
-      // Single-page apps re-render headers; put the button back when that happens.
-      this.#observer = new MutationObserver(() => this.#schedule());
-      this.#observer.observe(document.body, { childList: true, subtree: true });
-    }
+    this.#place();
+    this.#active = this.#present();
+    // Apps render (and re-render) headers whenever they like: keep triggers shown and the
+    // placed button in place. Work is batched to one check per animation frame.
+    this.#observer = new MutationObserver(() => this.#schedule());
+    this.#observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-navoro-trigger'] });
   }
 
-  /** True when the host page offers a trigger or asked for a placed button. */
-  static wanted(opts: HelpButtonOptions | null): boolean {
-    return Boolean(opts) || document.querySelector('[data-navoro-trigger]') !== null;
+  /** Whether the page currently offers a Help entry point (a trigger or the placed button). */
+  get active(): boolean {
+    return this.#active;
+  }
+
+  #present(): boolean {
+    return Boolean(this.#host?.isConnected) || document.querySelector('[data-navoro-trigger]') !== null;
   }
 
   setOpen(open: boolean): void {
@@ -116,7 +127,11 @@ export class HelpButtons {
     requestAnimationFrame(() => {
       this.#scheduled = false;
       for (const el of document.querySelectorAll<HTMLElement>('[data-navoro-trigger][hidden]')) this.#prepareTrigger(el);
-      if (!this.#host?.isConnected) this.#place();
+      if (this.#opts && !this.#host?.isConnected) this.#place();
+      if (!this.#active && this.#present()) {
+        this.#active = true;
+        this.#onAppear();
+      }
     });
   }
 

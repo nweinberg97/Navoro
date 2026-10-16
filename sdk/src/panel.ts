@@ -57,7 +57,7 @@ export class Panel {
   #open = false;
   #lastAnnounced = '';
 
-  readonly #hiddenLauncher: boolean;
+  #hiddenLauncher: boolean;
   readonly #mic: HTMLButtonElement;
   /** Host element that opened the panel (hidden-launcher mode) so focus can return to it. */
   #opener: HTMLElement | null = null;
@@ -142,6 +142,13 @@ export class Panel {
   }
 
   /** Puts recognised speech into the input so the user can see (and edit) what was heard. */
+  /** The host page now offers its own Help button: drop the floating launcher. */
+  useHostTrigger(): void {
+    if (this.#hiddenLauncher) return;
+    this.#hiddenLauncher = true;
+    this.launcher.remove();
+  }
+
   setDraft(text: string): void {
     this.#input.value = text.slice(0, 500);
   }

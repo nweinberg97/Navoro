@@ -237,3 +237,22 @@ test('help button: an app-owned [data-navoro-trigger] is shown and wired up', as
   assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
   await page.context().close();
 });
+
+test('help button: a trigger the app renders after Navoro loaded still takes over', async () => {
+  const page = await openBranded('', '', '<span id="slot"></span><button class="menu-btn">☰</button>');
+  await page.getByRole('button', { name: 'Open Navoro help' }).waitFor();
+  await page.evaluate(() => {
+    const b = document.createElement('button');
+    b.setAttribute('data-navoro-trigger', '');
+    b.setAttribute('aria-label', 'Late help');
+    b.hidden = true;
+    b.textContent = '?';
+    document.getElementById('slot')!.replaceWith(b);
+  });
+  const trigger = page.getByRole('button', { name: 'Late help' });
+  await trigger.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('navoro-root')!.shadowRoot!.querySelectorAll('[data-navoro-launcher]').length === 0);
+  await trigger.click();
+  assert.equal(await page.evaluate(() => (window as any).Navoro.isOpen()), true);
+  await page.context().close();
+});

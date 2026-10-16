@@ -142,20 +142,16 @@ export class NavoroController {
     // A placed (?) button or an app's own [data-navoro-trigger] replaces the floating launcher,
     // and the panel opens next to it unless the app chose a position.
     const buttonOpts = this.options.button ?? null;
-    const useButtons = HelpButtons.wanted(buttonOpts);
-    let position = this.options.panelPosition ?? config.launcher.position;
-    let offset = this.options.panelOffset;
-    if (useButtons) {
-      this.#buttons = new HelpButtons({ open: () => this.open(), close: () => this.close(), isOpen: () => this.isOpen }, buttonOpts, accent?.accent ?? null);
-      const rect = this.#buttons.anchor?.getBoundingClientRect();
-      if (!this.options.panelPosition && rect && rect.height > 0) {
-        const top = rect.top < window.innerHeight / 2;
-        position = top ? 'top-right' : 'bottom-right';
-        offset ??= Math.round(top ? rect.bottom + 8 : window.innerHeight - rect.top + 8);
-      }
-    }
-    const root = createRoot(position, offset, accent);
+    const buttons = new HelpButtons({ open: () => this.open(), close: () => this.close(), isOpen: () => this.isOpen }, buttonOpts, accent?.accent ?? null, () => {
+      // The app's Help button appeared after Navoro loaded: switch over to it.
+      this.#panel?.useHostTrigger();
+      this.#placeNearButton();
+    });
+    this.#buttons = buttons;
+    const useButtons = buttons.active;
+    const root = createRoot(this.options.panelPosition ?? config.launcher.position, this.options.panelOffset, accent);
     this.#root = root;
+    if (useButtons) this.#placeNearButton();
     this.#overlay = new Overlay(root);
     this.#panel = new Panel(root, config, this.options.launcher === 'hidden' || useButtons, {
       onOpen: () => this.open(),
@@ -398,6 +394,18 @@ export class NavoroController {
   #startWalkthrough(): void {
     // From the answer view or the completion view (restart); both start at step 0.
     if (this.#m.state.stepIndex === null) this.#m.send({ type: 'NEXT_STEP' });
+  }
+
+  /** Unless the app chose a panel position, open the panel right next to its Help button. */
+  #placeNearButton(): void {
+    const rect = this.#buttons?.anchor?.getBoundingClientRect();
+    const container = this.#root?.container;
+    if (this.options.panelPosition || !container || !rect || rect.height <= 0) return;
+    const top = rect.top < window.innerHeight / 2;
+    container.classList.toggle('top', top);
+    container.classList.remove('left');
+    const offset = this.options.panelOffset ?? Math.round(top ? rect.bottom + 8 : window.innerHeight - rect.top + 8);
+    container.style.setProperty('--edge', `${offset}px`);
   }
 
   #emitPanel(open: boolean): void {
