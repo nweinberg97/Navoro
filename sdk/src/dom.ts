@@ -168,7 +168,18 @@ export function isFormControl(el: Element): boolean {
  * Visible text of an element, skipping form controls, scripts, hidden subtrees and
  * blocked regions. Never reads `value`.
  */
-export function safeText(el: Element, max = 400): string {
+/**
+ * `matching: true` is for the resolver only: it compares an element's name with the label a
+ * walkthrough step is looking for, in memory, and keeps nothing. Privacy regions are then
+ * readable for that comparison, so Navoro can still point at "Save" inside a private dialog.
+ * Everything that collects context (and could leave the page) uses the default, which never
+ * reads inside [data-navoro-sensitive] / [data-navoro-ignore].
+ */
+export interface TextOptions {
+  matching?: boolean;
+}
+
+export function safeText(el: Element, max = 400, opts: TextOptions = {}): string {
   const doc = el.ownerDocument;
   const view = doc.defaultView;
   let out = '';
@@ -178,7 +189,7 @@ export function safeText(el: Element, max = 400): string {
       const child = node as Element;
       if (SKIP_TEXT_TAGS.has(child.tagName.toUpperCase())) return NodeFilter.FILTER_REJECT;
       if ((child as HTMLElement).isContentEditable && child !== el) return NodeFilter.FILTER_REJECT;
-      if (child.matches(ALWAYS_BLOCKED_REGION) || child.getAttribute('aria-hidden') === 'true' || child.hasAttribute('hidden')) {
+      if ((!opts.matching && child.matches(ALWAYS_BLOCKED_REGION)) || child.getAttribute('aria-hidden') === 'true' || child.hasAttribute('hidden')) {
         return NodeFilter.FILTER_REJECT;
       }
       if (view && child !== el) {
@@ -189,7 +200,7 @@ export function safeText(el: Element, max = 400): string {
     },
   });
   // Also covers label/aria-labelledby references that point INTO a sensitive region.
-  if ((el as HTMLElement).isContentEditable || el.closest(ALWAYS_BLOCKED_REGION)) return '';
+  if ((el as HTMLElement).isContentEditable || (!opts.matching && el.closest(ALWAYS_BLOCKED_REGION))) return '';
   while (walker.nextNode() && out.length < max * 2) {
     const node = walker.currentNode;
     if (node.nodeType === Node.TEXT_NODE) out += ' ' + (node.nodeValue ?? '');
@@ -197,15 +208,15 @@ export function safeText(el: Element, max = 400): string {
   return normalizeSpace(out).slice(0, max);
 }
 
-function labelsFor(el: Element): string {
+function labelsFor(el: Element, opts: TextOptions = {}): string {
   const doc = el.ownerDocument;
   const parts: string[] = [];
   const id = el.getAttribute('id');
   if (id) {
-    for (const label of doc.querySelectorAll(`label[for="${CSS.escape(id)}"]`)) parts.push(safeText(label));
+    for (const label of doc.querySelectorAll(`label[for="${CSS.escape(id)}"]`)) parts.push(safeText(label, 400, opts));
   }
   const wrapping = el.parentElement?.closest('label');
-  if (wrapping && !wrapping.hasAttribute('for')) parts.push(safeText(wrapping));
+  if (wrapping && !wrapping.hasAttribute('for')) parts.push(safeText(wrapping, 400, opts));
   return normalizeSpace(parts.join(' '));
 }
 
@@ -215,7 +226,7 @@ function labelsFor(el: Element): string {
  * own visible text (buttons, links, headings, etc.) → alt/title.
  * Never uses an input's value or placeholder.
  */
-export function accessibleName(el: Element): string {
+export function accessibleName(el: Element, opts: TextOptions = {}): string {
   const doc = el.ownerDocument;
   const labelledBy = el.getAttribute('aria-labelledby');
   if (labelledBy) {
@@ -223,7 +234,7 @@ export function accessibleName(el: Element): string {
       .split(/\s+/)
       .map((id) => {
         const ref = id ? doc.getElementById(id) : null;
-        return ref && !isFormControl(ref) ? safeText(ref) : '';
+        return ref && !isFormControl(ref) ? safeText(ref, 400, opts) : '';
       })
       .join(' ');
     if (normalizeSpace(text)) return normalizeSpace(text);
@@ -231,12 +242,12 @@ export function accessibleName(el: Element): string {
   const ariaLabel = el.getAttribute('aria-label');
   if (ariaLabel && ariaLabel.trim()) return normalizeSpace(ariaLabel);
   if (isFormControl(el)) {
-    const label = labelsFor(el);
+    const label = labelsFor(el, opts);
     if (label) return label;
     return normalizeSpace(el.getAttribute('title') ?? '');
   }
   if (el.tagName === 'IMG') return normalizeSpace(el.getAttribute('alt') ?? '');
-  const text = safeText(el);
+  const text = safeText(el, 400, opts);
   if (text) return text;
   const img = el.querySelector('img[alt]');
   if (img) return normalizeSpace(img.getAttribute('alt') ?? '');

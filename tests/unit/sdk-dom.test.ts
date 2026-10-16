@@ -472,3 +472,25 @@ test('discovery (development) sends structure only — no values', async () => {
   assert.equal(req.elements.find((e) => e.navoroId === 'login.password')?.label ?? null, null);
   await page.context().close();
 });
+
+test('private regions: pointing can find a control inside, but nothing inside is ever read', async () => {
+  const { page } = await openPage();
+  const r = await page.evaluate((policy) => {
+    const { resolveTarget, collectContext } = (window as any).NavoroSDK.__test;
+    const region = document.createElement('div');
+    region.setAttribute('data-navoro-sensitive', '');
+    region.innerHTML = '<p>PRIVATE-NOTE-TEXT</p><button data-navoro-id="dialog.save">Save changes</button><button aria-label="Close dialog">×</button>';
+    document.body.append(region);
+    const t = (strategies: unknown[]) => ({ key: 'k', label: 'L', strategies, confidence: 1, validation: 'unverified' });
+    const byText = resolveTarget(t([{ type: 'text', value: 'Save changes' }]));
+    const byAria = resolveTarget(t([{ type: 'aria_label', value: 'Close dialog' }]));
+    const ctx = JSON.stringify(collectContext(document, { ...policy, approvedNavoroIds: ['*'] }));
+    region.remove();
+    return { byText: byText.reason, byAria: byAria.reason, ctx };
+  }, POLICY);
+  assert.equal(r.byText, 'found', 'a button inside a private dialog can be pointed at by its text');
+  assert.equal(r.byAria, 'found');
+  for (const secret of ['PRIVATE-NOTE-TEXT', 'Save changes', 'Close dialog', 'dialog.save']) {
+    assert.ok(!r.ctx.includes(secret), `"${secret}" must never be collected`);
+  }
+});

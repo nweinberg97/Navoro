@@ -10,6 +10,9 @@ import type { GuidanceTarget, MatchStrategy } from '../../packages/contracts/src
 import { accessibleName, getRole, isNavoroUi, isVisible, safeText } from './dom.ts';
 import { normalizeForMatch } from './text.ts';
 
+/** Names are compared in memory and discarded, so private regions don't block pointing. */
+const MATCH = { matching: true } as const;
+
 export type ResolveReason = 'found' | 'not_found' | 'ambiguous' | 'hidden' | 'no_strategies';
 
 export interface ResolveResult {
@@ -39,7 +42,7 @@ function byNavoroId(root: Document, value: string): { matches: Element[]; hidden
 function byName(root: Document, value: string, role?: string): { matches: Element[]; hidden: boolean } {
   const want = normalizeForMatch(value);
   const all = [...root.querySelectorAll(NAME_CANDIDATES)].filter(
-    (el) => !isNavoroUi(el) && roleMatches(el, role) && normalizeForMatch(accessibleName(el)) === want,
+    (el) => !isNavoroUi(el) && roleMatches(el, role) && normalizeForMatch(accessibleName(el, MATCH)) === want,
   );
   const visible = innermost(all.filter(isVisible));
   return { matches: visible, hidden: all.length > 0 && visible.length === 0 };
@@ -51,7 +54,7 @@ function byText(root: Document, value: string, role?: string): { matches: Elemen
   const exact: Element[] = [];
   const prefix: Element[] = [];
   for (const el of candidates) {
-    const text = normalizeForMatch(safeText(el));
+    const text = normalizeForMatch(safeText(el, 400, MATCH));
     if (!text) continue;
     if (text === want) exact.push(el);
     else if (text.startsWith(want)) prefix.push(el);
