@@ -256,3 +256,42 @@ test('help button: a trigger the app renders after Navoro loaded still takes ove
   assert.equal(await page.evaluate(() => (window as any).Navoro.isOpen()), true);
   await page.context().close();
 });
+
+test('panel: drag by the header to move it; it stays put, and drop-near-home or double-click puts it back', async () => {
+  const page = await openBranded('');
+  await page.getByRole('button', { name: 'Open Navoro help' }).click();
+  await page.waitForTimeout(400); // let the opening animation finish
+  const panel = page.locator('navoro-root [data-navoro-panel]');
+  const head = panel.locator('.head');
+  const home = (await panel.boundingBox())!;
+  const h = (await head.boundingBox())!;
+  const dragBy = async (dx: number, dy: number) => {
+    const b = (await head.boundingBox())!;
+    await page.mouse.move(b.x + 120, b.y + b.height / 2);
+    await page.mouse.down();
+    for (let i = 1; i <= 10; i++) await page.mouse.move(b.x + 120 + (dx * i) / 10, b.y + b.height / 2 + (dy * i) / 10);
+    await page.mouse.up();
+    await page.waitForTimeout(300); // the panel settles with a short animation when it lands home
+  };
+  await dragBy(-500, 150);
+  const moved = (await panel.boundingBox())!;
+  assert.ok(Math.abs(moved.x - (home.x - 500)) < 2 && Math.abs(moved.y - (home.y + 150)) < 2, 'panel followed the drag');
+  // Closing and reopening keeps the spot.
+  await page.evaluate(() => { (window as any).Navoro.close(); (window as any).Navoro.open(); });
+  await page.waitForTimeout(400);
+  const reopened = (await panel.boundingBox())!;
+  assert.ok(Math.abs(reopened.x - moved.x) < 1 && Math.abs(reopened.y - moved.y) < 1);
+  // Dropping near its usual place snaps it back exactly.
+  await dragBy(home.x - moved.x + 20, home.y - moved.y - 15);
+  const snapped = (await panel.boundingBox())!;
+  assert.ok(Math.abs(snapped.x - home.x) < 1 && Math.abs(snapped.y - home.y) < 1, 'snapped home');
+  // Double-clicking the header also puts it back.
+  await dragBy(-300, 100);
+  await head.dblclick({ position: { x: 120, y: h.height / 2 } });
+  await page.waitForTimeout(300);
+  const reset = (await panel.boundingBox())!;
+  assert.ok(Math.abs(reset.x - home.x) < 1 && Math.abs(reset.y - home.y) < 1, 'double-click resets');
+  // Nothing was written to storage.
+  assert.deepEqual(await page.evaluate(() => [localStorage.length, sessionStorage.length]), [0, 0]);
+  await page.context().close();
+});
