@@ -58,6 +58,10 @@ export class Panel {
   #lastAnnounced = '';
 
   #hiddenLauncher: boolean;
+  #head!: HTMLDivElement;
+  #ghost!: HTMLDivElement;
+  #moved: { x: number; y: number } | null = null;
+  #home: DOMRect | null = null;
   readonly #mic: HTMLButtonElement;
   /** Host element that opened the panel (hidden-launcher mode) so focus can return to it. */
   #opener: HTMLElement | null = null;
@@ -109,19 +113,111 @@ export class Panel {
         hidden: true,
         'data-navoro-panel': '',
       },
-      h(
+      (this.#head = h(
         'div',
-        { class: 'head' },
+        { class: 'head', title: 'Drag to move · double-click to put back' },
         svg(markSvg(28, true)),
         h('div', { class: 'name' }, h('h2', { id: titleId }, config.applicationName || 'Help'), h('div', { class: 'by' }, 'Guided by Navoro')),
         closeBtn('Close help', () => cb.onClose()),
-      ),
+      )),
       this.#body,
       form,
       this.#live,
     );
     root.container.append(this.#panel);
     if (!hiddenLauncher) root.container.append(this.launcher);
+    this.#ghost = h('div', { class: 'home-ghost', 'aria-hidden': 'true' });
+    root.container.append(this.#ghost);
+    this.#makeMovable();
+  }
+
+  /**
+   * Desktop: drag the panel by its header so it never sits on top of what you need.
+   * The spot is kept only in memory for this page (Navoro stores nothing). While dragging, a
+   * dashed outline marks the panel's usual place; dropping near it, or double-clicking the
+   * header, puts it back exactly. Phones keep the full-width sheet.
+   */
+  #makeMovable(): void {
+    const head = this.#head;
+    const panel = this.#panel;
+    const phone = () => matchMedia('(max-width:480px)').matches;
+    let start: { x: number; y: number; ox: number; oy: number; moved: boolean; id: number } | null = null;
+    head.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || phone() || (e.target as Element).closest('button')) return;
+      const r = panel.getBoundingClientRect();
+      start = { x: e.clientX, y: e.clientY, ox: e.clientX - r.left, oy: e.clientY - r.top, moved: false, id: e.pointerId };
+      head.setPointerCapture(e.pointerId);
+    });
+    head.addEventListener('pointermove', (e) => {
+      if (!start || e.pointerId !== start.id) return;
+      if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5) return;
+      if (!start.moved) {
+        start.moved = true;
+        this.#showHome();
+        panel.classList.add('moving', 'placed');
+      }
+      this.#place(e.clientX - start.ox, e.clientY - start.oy);
+      this.#nearHome();
+    });
+    const end = () => {
+      if (!start) return;
+      if (start.moved) {
+        if (this.#nearHome()) this.resetPosition();
+        this.#ghost.classList.remove('show', 'hot');
+        panel.classList.remove('moving');
+      }
+      start = null;
+    };
+    head.addEventListener('pointerup', end);
+    head.addEventListener('pointercancel', end);
+    head.addEventListener('dblclick', (e) => {
+      if (!(e.target as Element).closest('button')) this.resetPosition();
+    });
+    addEventListener('resize', () => {
+      if (phone()) this.resetPosition();
+      else if (this.#moved) this.#place(this.#moved.x, this.#moved.y);
+    });
+  }
+
+  /** Puts the panel back in its usual place. */
+  resetPosition(): void {
+    this.#moved = null;
+    this.#panel.classList.remove('placed');
+    for (const prop of ['left', 'top', 'right', 'bottom']) this.#panel.style.removeProperty(prop);
+  }
+
+  #place(x: number, y: number): void {
+    const r = this.#panel.getBoundingClientRect();
+    const cx = Math.min(Math.max(8, x), Math.max(8, innerWidth - r.width - 8));
+    const cy = Math.min(Math.max(8, y), Math.max(8, innerHeight - Math.min(r.height, 120) - 8));
+    this.#moved = { x: cx, y: cy };
+    const s = this.#panel.style;
+    s.setProperty('left', `${cx}px`);
+    s.setProperty('top', `${cy}px`);
+    s.setProperty('right', 'auto');
+    s.setProperty('bottom', 'auto');
+  }
+
+  #showHome(): void {
+    const s = this.#panel.style;
+    const saved = ['left', 'top', 'right', 'bottom'].map((p) => [p, s.getPropertyValue(p)] as const);
+    for (const [p] of saved) s.removeProperty(p);
+    this.#home = this.#panel.getBoundingClientRect();
+    for (const [p, v] of saved) if (v) s.setProperty(p, v);
+    const g = this.#ghost.style;
+    g.setProperty('left', `${this.#home.left}px`);
+    g.setProperty('top', `${this.#home.top}px`);
+    g.setProperty('width', `${this.#home.width}px`);
+    g.setProperty('height', `${this.#home.height}px`);
+    this.#ghost.classList.add('show');
+  }
+
+  #nearHome(): boolean {
+    if (!this.#home) return false;
+    const r = this.#panel.getBoundingClientRect();
+    const hot = Math.hypot(r.left - this.#home.left, r.top - this.#home.top) < 56;
+    this.#ghost.classList.toggle('hot', hot);
+    return hot;
   }
 
   get isOpen(): boolean {

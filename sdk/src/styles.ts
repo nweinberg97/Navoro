@@ -36,7 +36,9 @@ button:disabled{cursor:default;opacity:.45}
 .panel{bottom:84px;width:360px;max-height:min(70vh,640px);display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);overflow:hidden}
 .panel,.card{animation:rise .18s ease-out}
 @keyframes rise{from{opacity:0;transform:translateY(6px)}}
-.head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;border-bottom:1px solid var(--line)}
+.head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;border-bottom:1px solid var(--line);cursor:grab;touch-action:none;user-select:none}
+.panel.placed{animation:none}.panel.moving{animation:none;box-shadow:0 2px 4px rgba(17,18,16,.1),0 22px 48px rgba(17,18,16,.24)}.panel.moving .head{cursor:grabbing}
+.home-ghost{position:fixed;pointer-events:none;border:2px dashed var(--line2);border-radius:14px;opacity:0;transition:opacity .15s,border-color .15s,background .15s}.home-ghost.show{opacity:1}.home-ghost.hot{border-color:var(--lime);background:color-mix(in srgb,var(--lime) 16%,transparent)}
 .name{flex:1;min-width:0}
 h2{margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .by{font-size:12px;color:var(--subtle)}
@@ -102,6 +104,6 @@ summary{cursor:pointer;font-size:12.5px;color:var(--muted);border-radius:6px}
 .bar i{display:block;height:100%;background:var(--lime)}
 h3{margin:2px 0 0;font-size:14.5px;font-weight:600}
 .nav{display:flex;justify-content:space-between;margin-top:6px}
-@media (max-width:480px){.panel,.left .panel{left:0;right:0;bottom:0;width:100%;max-height:80vh;border-radius:16px 16px 0 0}.top .panel,.top.left .panel{left:8px;right:8px;bottom:auto;top:var(--edge);width:auto;max-height:calc(100vh - var(--edge) - 8px);border-radius:14px}.card.docked,.left .card.docked{left:8px;right:8px;width:auto}}
+@media (max-width:480px){.head{cursor:default}.panel,.left .panel{left:0;right:0;bottom:0;width:100%;max-height:80vh;border-radius:16px 16px 0 0}.top .panel,.top.left .panel{left:8px;right:8px;bottom:auto;top:var(--edge);width:auto;max-height:calc(100vh - var(--edge) - 8px);border-radius:14px}.card.docked,.left .card.docked{left:8px;right:8px;width:auto}}
 @media (prefers-reduced-motion:reduce){*,::before,::after{animation:none!important;transition:none!important}}
 `;
