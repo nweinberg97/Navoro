@@ -159,3 +159,81 @@ test('local mode: a broken or missing pack keeps Navoro hidden without breaking 
   assert.match(warnings[0] ?? '', /unsupported version/);
   await context.close();
 });
+
+/** A page with a header + settings menu, a brand theme-color and Navoro told where to put its (?) button. */
+async function openBranded(scriptAttrs: string, extraHead = '', header = '<button class="menu-btn" aria-label="Open menu">☰</button>'): Promise<Page> {
+  const context = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+  const page = await context.newPage();
+  const html = `<!doctype html><html lang="en"><head><title>Brand</title>${extraHead}</head><body>
+    <header style="height:56px;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 16px;color:#223">${header}</header>
+    <nav><a href="#" data-navoro-id="nav.reports">Reports</a></nav><main><h1>Dashboard</h1></main>
+    <script src="/navoro/navoro.js" data-navoro-pack="/navoro/pack.json" ${scriptAttrs} defer></script></body></html>`;
+  await page.route('**/*', (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: html });
+    if (url.pathname === '/navoro/navoro.js') return route.fulfill({ contentType: 'text/javascript', body: sdk });
+    if (url.pathname === '/navoro/pack.json') return route.fulfill({ contentType: 'application/json', body: JSON.stringify(pack) });
+    return route.abort();
+  });
+  await page.goto(`${APP}/`);
+  return page;
+}
+
+test('branding: the page theme-color becomes the highlight colour, with readable text on it', async () => {
+  const page = await openBranded('', '<meta name="theme-color" content="#59b2ec">');
+  await page.getByRole('button', { name: 'Open Navoro help' }).waitFor();
+  const vars = await page.evaluate(() => {
+    const root = document.querySelector('navoro-root')?.shadowRoot?.querySelector('.root') as HTMLElement;
+    return { accent: root.style.getPropertyValue('--lime'), on: root.style.getPropertyValue('--on-accent') };
+  });
+  assert.equal(vars.accent, 'rgb(89, 178, 236)');
+  assert.equal(vars.on, '#111210', 'dark text on a light blue');
+  await page.context().close();
+});
+
+test('branding: explicit accent wins; white theme-color is ignored', async () => {
+  const explicit = await openBranded('data-navoro-accent="#4338ca"', '<meta name="theme-color" content="#59b2ec">');
+  await explicit.getByRole('button', { name: 'Open Navoro help' }).waitFor();
+  const a = await explicit.evaluate(() => {
+    const root = document.querySelector('navoro-root')?.shadowRoot?.querySelector('.root') as HTMLElement;
+    return [root.style.getPropertyValue('--lime'), root.style.getPropertyValue('--on-accent')];
+  });
+  assert.deepEqual(a, ['rgb(67, 56, 202)', '#FAF8F3'], 'light text on a dark indigo');
+  await explicit.context().close();
+  const white = await openBranded('', '<meta name="theme-color" content="#ffffff">');
+  await white.getByRole('button', { name: 'Open Navoro help' }).waitFor();
+  const w = await white.evaluate(() => (document.querySelector('navoro-root')?.shadowRoot?.querySelector('.root') as HTMLElement).style.getPropertyValue('--lime'));
+  assert.equal(w, '', 'no brand colour → Navoro default');
+  await white.context().close();
+});
+
+test('help button: placed right before the app menu, no floating launcher, toggles the panel', async () => {
+  const page = await openBranded('data-navoro-button=".menu-btn" data-navoro-button-placement="before"');
+  const help = page.getByRole('button', { name: 'Help', exact: true });
+  await help.waitFor();
+  assert.equal(await page.locator('navoro-root [data-navoro-launcher]').count(), 0);
+  const order = await page.evaluate(() => [...document.querySelector('header')!.children].map((el) => el.tagName.toLowerCase()));
+  assert.deepEqual(order, ['navoro-help-button', 'button'], 'help icon sits to the left of the menu');
+  await help.click();
+  assert.equal(await page.evaluate(() => (window as any).Navoro.isOpen()), true);
+  assert.equal(await help.getAttribute('aria-expanded'), 'true');
+  const panelTop = await page.evaluate(() => {
+    const panel = document.querySelector('navoro-root')!.shadowRoot!.querySelector('[role="dialog"], .panel') as HTMLElement;
+    return panel.getBoundingClientRect().top;
+  });
+  assert.ok(panelTop >= 56, `panel opens under the header (top ${panelTop})`);
+  await help.click();
+  assert.equal(await page.evaluate(() => (window as any).Navoro.isOpen()), false);
+  await page.context().close();
+});
+
+test('help button: an app-owned [data-navoro-trigger] is shown and wired up', async () => {
+  const page = await openBranded('', '', '<button data-navoro-trigger hidden aria-label="Get help">?</button><button class="menu-btn">☰</button>');
+  const trigger = page.getByRole('button', { name: 'Get help' });
+  await trigger.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('navoro-root [data-navoro-launcher]').count(), 0);
+  await trigger.click();
+  assert.equal(await page.evaluate(() => (window as any).Navoro.isOpen()), true);
+  assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
+  await page.context().close();
+});

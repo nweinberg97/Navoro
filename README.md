@@ -49,6 +49,18 @@ It prints a coverage report: which steps can point at a control, which can't and
 
 **Optional, but makes pointing reliable across redesigns:** add `data-navoro-id="reports.new"` to the controls your docs mention, and mark errors with `data-navoro-error="CODE"` so "what's wrong?" can explain them. Without an `elements` list in the config, any element you tag is allowed as context (tagging is the opt-in) and steps match controls by their accessible name or visible text.
 
+### Your Help button, your colours
+
+Navoro fits into the app instead of floating on top of it:
+
+| Want | Do |
+|---|---|
+| Navoro's (?) icon in a spot you choose | `data-navoro-button=".menu-btn" data-navoro-button-placement="before"` on the script tag (`before`, `after`, `prepend`, `append`). It takes the surrounding text colour and comes back if your header re-renders. |
+| Your own button opens Navoro | Add `data-navoro-trigger` to it (ship it with `hidden`; Navoro shows it once ready and keeps `aria-expanded` in sync). |
+| Highlights in your brand colour | Automatic from `<meta name="theme-color">`; or `data-navoro-accent="#59b2ec"`, `data-navoro-accent="var(--brand)"`, or `"theme": { "accent": "#59b2ec" }` in navoro.config.json. Text on the accent switches between dark and light for contrast. |
+
+With either button option the floating launcher is hidden and the panel opens next to your button.
+
 ### What it does with a question
 
 | The user… | Navoro… |

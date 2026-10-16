@@ -79,14 +79,13 @@ export function installNavoro(config: NavoroConfig, onError: () => void): void {
   if (config.mode === 'local') {
     // Local mode: both files are served by this site. This is the whole install.
     // Relative paths, so the same build works at / and under a sub-path like /Navoro/demo/.
-    // The app shows its own Help button in the top bar (see main.ts), so Navoro's floating
-    // launcher is hidden and the panel opens just under the top bar, on the right.
+    // The app's own Help (?) button in the top bar carries data-navoro-trigger (see main.ts), so
+    // Navoro hides its floating launcher and opens the panel just under it. Highlights use
+    // Lumen's brand colour, read from its --accent CSS variable.
     const local = h('script', {
       src: 'navoro/navoro.js',
       'data-navoro-pack': 'navoro/navoro-pack.json',
-      'data-navoro-launcher': 'hidden',
-      'data-navoro-panel': 'top-right',
-      'data-navoro-panel-offset': '64',
+      'data-navoro-accent': 'var(--accent)',
       defer: true,
     });
     local.addEventListener('error', onError);
@@ -103,36 +102,3 @@ export function installNavoro(config: NavoroConfig, onError: () => void): void {
   document.head.append(script);
 }
 
-interface NavoroApi {
-  isOpen(): boolean;
-  open(): void;
-  close(): void;
-  on(event: 'panel', cb: (open: boolean) => void): void;
-}
-
-/**
- * Local mode: a Help (?) button in the app's own top bar opens Navoro. It stays hidden until
- * Navoro has actually loaded, so the app never shows a button that does nothing.
- */
-export function wireHelpButton(button: HTMLButtonElement, config: NavoroConfig): void {
-  button.hidden = true;
-  if (config.mode !== 'local') return;
-  const nav = (): NavoroApi | undefined => (window as unknown as { Navoro?: NavoroApi }).Navoro;
-  button.addEventListener('click', () => {
-    const n = nav();
-    if (!n) return;
-    if (n.isOpen()) n.close();
-    else n.open();
-  });
-  const started = Date.now();
-  const timer = setInterval(() => {
-    const n = nav();
-    if (n && document.querySelector('navoro-root')) {
-      clearInterval(timer);
-      button.hidden = false;
-      n.on('panel', (open) => button.setAttribute('aria-expanded', String(open)));
-    } else if (Date.now() - started > 15000) {
-      clearInterval(timer);
-    }
-  }, 100);
-}

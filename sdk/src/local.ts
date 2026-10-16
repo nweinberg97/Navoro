@@ -58,6 +58,7 @@ export class LocalSource {
       analyticsEnabled: false,
       discoveryEnabled: false,
       launcher: { position: 'bottom-right', greeting: pack.launcher.greeting, suggestions: pack.launcher.suggestions },
+      theme: { accent: pack.theme?.accent ?? null },
       supportUrl: pack.supportUrl,
     };
   }

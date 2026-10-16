@@ -21,6 +21,8 @@ import type {
 import { ApiError, EventQueue, NavoroApi } from './api.ts';
 import { collectContext } from './context-collector.ts';
 import { DiscoveryScheduler } from './discovery.ts';
+import { resolveAccent } from './theme.ts';
+import { HelpButtons, type HelpButtonOptions } from './help-button.ts';
 import { createRoot, Overlay, type NavoroRoot } from './overlay.ts';
 import { Panel } from './panel.ts';
 import { resolveTarget } from './resolver.ts';
@@ -39,6 +41,10 @@ export interface ControllerOptions {
   launcher: 'default' | 'hidden';
   panelPosition: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | null;
   panelOffset: number | null;
+  /** Brand colour override (CSS colour or var(--name)). */
+  accent?: string | null;
+  /** Where Navoro places its (?) Help button in the host page. */
+  button?: HelpButtonOptions | null;
   /** Local mode: knowledge pack URL or object. Null → hosted mode. */
   pack: string | KnowledgePack | null;
   voice: VoiceMode;
@@ -70,6 +76,7 @@ export class NavoroController {
   readonly #api: NavoroApi;
   #config: PublicSdkConfig | null = null;
   #root: NavoroRoot | null = null;
+  #buttons: HelpButtons | null = null;
   #panel: Panel | null = null;
   #overlay: Overlay | null = null;
   #events: EventQueue | null = null;
@@ -131,10 +138,26 @@ export class NavoroController {
   }
 
   #mount(config: PublicSdkConfig): void {
-    const root = createRoot(this.options.panelPosition ?? config.launcher.position, this.options.panelOffset);
+    const accent = resolveAccent([this.options.accent, config.theme?.accent]);
+    // A placed (?) button or an app's own [data-navoro-trigger] replaces the floating launcher,
+    // and the panel opens next to it unless the app chose a position.
+    const buttonOpts = this.options.button ?? null;
+    const useButtons = HelpButtons.wanted(buttonOpts);
+    let position = this.options.panelPosition ?? config.launcher.position;
+    let offset = this.options.panelOffset;
+    if (useButtons) {
+      this.#buttons = new HelpButtons({ open: () => this.open(), close: () => this.close(), isOpen: () => this.isOpen }, buttonOpts, accent?.accent ?? null);
+      const rect = this.#buttons.anchor?.getBoundingClientRect();
+      if (!this.options.panelPosition && rect && rect.height > 0) {
+        const top = rect.top < window.innerHeight / 2;
+        position = top ? 'top-right' : 'bottom-right';
+        offset ??= Math.round(top ? rect.bottom + 8 : window.innerHeight - rect.top + 8);
+      }
+    }
+    const root = createRoot(position, offset, accent);
     this.#root = root;
     this.#overlay = new Overlay(root);
-    this.#panel = new Panel(root, config, this.options.launcher === 'hidden', {
+    this.#panel = new Panel(root, config, this.options.launcher === 'hidden' || useButtons, {
       onOpen: () => this.open(),
       onClose: () => this.close(),
       onAsk: (q) => void this.ask(q),
@@ -266,6 +289,7 @@ export class NavoroController {
     this.#events?.flush(true);
     this.#events?.dispose();
     this.#discovery?.dispose();
+    this.#buttons?.destroy();
     this.#overlay?.destroy();
     this.#root?.shadow.removeEventListener('keydown', this.#onKeyDown as EventListener);
     document.removeEventListener('keydown', this.#onKeyDown);
@@ -377,6 +401,7 @@ export class NavoroController {
   }
 
   #emitPanel(open: boolean): void {
+    this.#buttons?.setOpen(open);
     for (const listener of [...this.#panelListeners]) {
       try {
         listener(open);

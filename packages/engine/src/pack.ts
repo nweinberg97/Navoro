@@ -45,6 +45,7 @@ export function validatePack(value: unknown): KnowledgePack {
   if (!isObj(v.launcher) || !isStr(v.launcher.greeting, 300) || !strArray(v.launcher.suggestions, 6, 120)) fail('launcher');
   if (!isStrOrNull(v.supportUrl, 500)) fail('supportUrl');
   if (!isStrOrNull(v.supportEmail, 254)) fail('supportEmail');
+  if (v.theme !== undefined && (!isObj(v.theme) || !isStrOrNull(v.theme.accent, 64))) fail('theme');
   const p = v.privacy;
   if (!isObj(p)) fail('privacy');
   const privacy = p as Record<string, unknown>;

@@ -78,7 +78,7 @@ h2{margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;te
 .err{background:#FBEAEA;color:#B42318;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .done{padding:10px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:13px}
 .done strong{display:block;font-size:14px;font-weight:600;color:var(--ink)}
-.tick{width:24px;height:24px;border-radius:50%;background:var(--lime);display:grid;place-items:center;flex:none}
+.tick{width:24px;height:24px;border-radius:50%;background:var(--lime);color:var(--on-accent,#111210);display:grid;place-items:center;flex:none}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .cites{border-top:1px solid var(--line);padding-top:10px}
 summary{cursor:pointer;font-size:12.5px;color:var(--muted);border-radius:6px}

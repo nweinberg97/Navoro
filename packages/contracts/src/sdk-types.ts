@@ -66,6 +66,8 @@ export interface PublicSdkConfig {
     suggestions: string[];
   };
   supportUrl: string | null;
+  /** Optional brand colour for highlights and progress (any CSS colour). Null → Navoro's default. */
+  theme?: { accent: string | null };
 }
 
 export interface SdkInitResponse {
@@ -282,6 +284,8 @@ export interface KnowledgePack {
   supportUrl: string | null;
   /** Where unsolved problems go: the Contact support button opens an email to this address. */
   supportEmail: string | null;
+  /** Brand colour for highlights, progress and checkmarks (a CSS colour). Absent → the page's theme-color, then Navoro's default. */
+  theme?: { accent: string | null };
   /**
    * Privacy policy enforced in the browser. In local mode nothing is transmitted, so
    * `observe` is what the on-device engine may read; never-collect rules and the

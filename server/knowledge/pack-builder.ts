@@ -61,6 +61,7 @@ export const packConfigSchema = v.object({
   launcher: v.optional(v.object({ greeting: v.optional(v.string({ max: 300 })), suggestions: v.optional(v.array(v.string({ min: 1, max: 120 }), { max: 4 })) })),
   supportUrl: v.optional(v.nullable(v.string({ max: 500, pattern: /^https?:\/\/\S+$/, patternMessage: 'Must be an http(s) URL' }))),
   /** Where unsolved problems go. The panel's "Email support" opens a pre-filled email to this address. */
+  theme: v.optional(v.object({ accent: v.optional(v.nullable(v.string({ max: 64, pattern: /^(#[0-9a-fA-F]{3,8}|(rgb|hsl)a?\([0-9.,%\s/deg]+\)|var\(--[\w-]+\))$/, patternMessage: 'Must be a hex, rgb(), hsl() or var(--name) colour' }))) })),
   supportEmail: v.optional(v.nullable(v.string({ max: 254, pattern: /^[^\s@<>()"]+@[^\s@<>()"]+\.[^\s@<>()"]+$/, patternMessage: 'Must be an email address' }))),
   /** Output path relative to the config. Default: navoro-pack.json next to the config. */
   out: v.optional(v.string({ min: 1, max: 500 })),
@@ -234,6 +235,7 @@ export async function buildPack(config: PackConfig, baseDir: string, options: { 
     },
     supportUrl: config.supportUrl ?? null,
     supportEmail: config.supportEmail ?? null,
+    ...(config.theme?.accent ? { theme: { accent: config.theme.accent } } : {}),
     privacy: {
       observe: config.privacy?.observe ?? DEFAULT_OBSERVE,
       blockedNavoroIds,

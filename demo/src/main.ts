@@ -1,6 +1,6 @@
 import './styles.css';
 import { h, icon } from './ui.ts';
-import { installNavoro, resetConfig, resolveConfig, saveKey, wireHelpButton } from './navoro-install.ts';
+import { installNavoro, resetConfig, resolveConfig, saveKey } from './navoro-install.ts';
 import { dashboardView } from './views/dashboard.ts';
 import { reportsView } from './views/reports.ts';
 import { newReportView } from './views/new-report.ts';
@@ -88,8 +88,8 @@ document.addEventListener('click', (e) => {
   if (!popover.hidden && !popover.contains(t) && !demoBtn.contains(t)) togglePop(false);
 });
 
-const helpBtn = h('button', { type: 'button', class: 'icon-btn help-btn', 'aria-label': 'Help', 'aria-expanded': 'false', title: 'Help' }, icon('help', 20)) as HTMLButtonElement;
-wireHelpButton(helpBtn, config);
+// Local mode: Navoro wires this button up (data-navoro-trigger) and un-hides it once it's ready.
+const helpBtn = h('button', { type: 'button', class: 'icon-btn help-btn', 'aria-label': 'Help', title: 'Help', hidden: true, ...(config.mode === 'local' ? { 'data-navoro-trigger': '' } : {}) }, icon('help', 20));
 
 const crumb = h('span', { class: 'crumb' });
 const topbar = h('header', { class: 'topbar' }, menuBtn, crumb, h('div', { class: 'topbar-end' }, helpBtn, h('div', { class: 'pop-wrap' }, demoBtn, popover), h('span', { class: 'avatar avatar-me', role: 'img', 'aria-label': 'Signed in as Jordan Avery (synthetic)' }, 'JA')));

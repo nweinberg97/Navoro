@@ -10,6 +10,7 @@
  * The SDK is read-only by design: it never clicks, types into, submits, changes
  * or steals focus from host elements (see controller.ts).
  */
+import { isPlacement, type ButtonPlacement } from './help-button.ts';
 import type { EnvironmentName, KnowledgePack, SanitizedContext } from '../../packages/contracts/src/sdk-types.ts';
 import type { VoiceMode } from './voice.ts';
 import { NavoroController, type PanelListener, type StateListener } from './controller.ts';
@@ -40,6 +41,17 @@ export interface NavoroInitOptions {
   panelPosition?: PanelPosition;
   /** Distance in px from the anchored edges (e.g. your header height). */
   panelOffset?: number;
+  /**
+   * Brand colour for highlights, progress and checkmarks: any CSS colour ("#59b2ec"), or
+   * "var(--brand)" to read one of your CSS custom properties. Default: the knowledge pack's
+   * theme, then the page's <meta name="theme-color">, then Navoro's lime.
+   */
+  accent?: string;
+  /**
+   * Put Navoro's (?) Help button where you want it, e.g. { target: '.menu-btn', placement: 'before' }.
+   * Or mark your own button with data-navoro-trigger. Either replaces the floating launcher.
+   */
+  button?: { target: string; placement?: 'before' | 'after' | 'prepend' | 'append' };
 }
 
 export type PanelPosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -118,6 +130,10 @@ function validateOptions(o: NavoroInitOptions): ValidOptions {
     launcher: o.launcher === 'hidden' ? 'hidden' : 'default',
     ...(isPanelPosition(o.panelPosition ?? null) ? { panelPosition: o.panelPosition } : {}),
     ...(offset !== undefined ? { panelOffset: offset } : {}),
+    ...(typeof o.accent === 'string' && o.accent.trim() && o.accent.length <= 64 ? { accent: o.accent.trim() } : {}),
+    ...(o.button && typeof o.button.target === 'string' && o.button.target.trim()
+      ? { button: { target: o.button.target.trim(), placement: isPlacement(o.button.placement) ? o.button.placement : 'append' } }
+      : {}),
   };
 }
 
@@ -132,7 +148,7 @@ export const Navoro: NavoroApi = {
       return Promise.reject(err);
     }
     const packKey = typeof opts.pack === 'string' ? opts.pack : opts.pack ? `inline:${opts.pack.hash}` : '';
-    const key = `${packKey}|${opts.publicKey}|${opts.environment}|${opts.apiOrigin}|${opts.voice}|${opts.debug}|${opts.launcher}|${opts.panelPosition ?? ''}|${opts.panelOffset ?? ''}`;
+    const key = `${packKey}|${opts.publicKey}|${opts.environment}|${opts.apiOrigin}|${opts.voice}|${opts.debug}|${opts.launcher}|${opts.panelPosition ?? ''}|${opts.panelOffset ?? ''}|${opts.accent ?? ''}|${opts.button ? `${opts.button.target}@${opts.button.placement}` : ''}`;
     // Double init with identical options is a no-op; different options re-init cleanly.
     if (initPromise && key === initKey) return initPromise;
     teardown();
@@ -145,6 +161,8 @@ export const Navoro: NavoroApi = {
         launcher: opts.launcher ?? 'default',
         panelPosition: opts.panelPosition ?? null,
         panelOffset: opts.panelOffset ?? null,
+        accent: opts.accent ?? null,
+        button: opts.button ? { target: opts.button.target, placement: isPlacement(opts.button.placement) ? opts.button.placement : 'append' } : null,
         sdkVersion: VERSION,
       },
       listeners,
@@ -198,6 +216,10 @@ export const Navoro: NavoroApi = {
   },
 };
 
+function placementAttr(value: string | null): ButtonPlacement {
+  return isPlacement(value) ? value : 'append';
+}
+
 function isPanelPosition(value: string | null): value is PanelPosition {
   return value === 'bottom-right' || value === 'bottom-left' || value === 'top-right' || value === 'top-left';
 }
@@ -230,6 +252,10 @@ export function readScriptConfig(script: HTMLScriptElement | null): NavoroInitOp
     launcher: script.getAttribute('data-navoro-launcher') === 'hidden' ? 'hidden' : 'default',
     ...(isPanelPosition(panelAttr) ? { panelPosition: panelAttr } : {}),
     ...(Number.isFinite(offsetAttr) && offsetAttr > 0 ? { panelOffset: offsetAttr } : {}),
+    ...(script.getAttribute('data-navoro-accent') ? { accent: script.getAttribute('data-navoro-accent') ?? '' } : {}),
+    ...(script.getAttribute('data-navoro-button')
+      ? { button: { target: script.getAttribute('data-navoro-button') ?? '', placement: placementAttr(script.getAttribute('data-navoro-button-placement')) } }
+      : {}),
   };
 }
 

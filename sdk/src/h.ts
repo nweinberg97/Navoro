@@ -44,7 +44,7 @@ export function svg(markup: string): HTMLSpanElement {
 export const ICON_CLOSE =
   '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 export const ICON_CHECK =
-  '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="#111210" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 export function prefersReducedMotion(): boolean {
   try {
